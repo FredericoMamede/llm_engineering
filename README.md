@@ -18,17 +18,20 @@ Any questions, please ask me on Udemy or at ed@edwarddonner.com. More details at
 
 ---
 
-## 📌 Note on This Fork (Student Repository)
+## 📌 Note on This Fork (Learning & Experiments)
 
 This repository is a **personal fork** of the original *LLM Engineering* course repository by **Edward Donner**.
 
-I am using this fork to:
-- Work through the exercises locally
-- Implement my own solutions and experiments
-- Track my learning progress transparently over time
+The original repository contains **reference implementations and complete solutions** provided as part of the course.
 
-All original course structure and materials remain credited to the course author.  
-Any changes, additions, or implementations in this fork reflect **my own learning work**.
+I am using this fork to:
+- Study and run the reference implementations
+- Experiment with variations and alternative approaches
+- Extend the code with my own ideas and modifications
+- Document insights gained while learning LLM engineering concepts
+
+All original code and structure are credited to the course author.  
+Any additional code, experiments, or changes in this fork reflect **my own learning work and exploration**.
 
 ### Keeping this fork up to date
 
