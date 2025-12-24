@@ -16,6 +16,29 @@ The course material has been completely refreshed with all new weeks. If you'd p
 
 Any questions, please ask me on Udemy or at ed@edwarddonner.com. More details at the top of the course resources [here](https://edwarddonner.com/2024/11/13/llm-engineering-resources/).
 
+---
+
+## 📌 Note on This Fork (Student Repository)
+
+This repository is a **personal fork** of the original *LLM Engineering* course repository by **Edward Donner**.
+
+I am using this fork to:
+- Work through the exercises locally
+- Implement my own solutions and experiments
+- Track my learning progress transparently over time
+
+All original course structure and materials remain credited to the course author.  
+Any changes, additions, or implementations in this fork reflect **my own learning work**.
+
+### Keeping this fork up to date
+
+To pull updates from the original course repository:
+
+```bash
+git fetch upstream
+git merge upstream/main
+
+
 ### Before you begin
 
 I'm here to help you be most successful with your learning. If you hit any snafus, or if you have any ideas on how I can improve the course, please do reach out in the platform or by emailing me direct (ed@edwarddonner.com). It's always great to connect with people on LinkedIn to build up the community - you'll find me here:  
