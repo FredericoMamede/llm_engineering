@@ -27,6 +27,33 @@
 
 ---
 
+## LLM Model Selection: Local vs Frontier
+
+**Frontier Models (OpenAI, Claude, Gemini):**
+- Best quality, reasoning, capabilities
+- Cloud-based, paid API
+- Data leaves your machine
+- Low latency (fast inference)
+
+**Local Models (Ollama):**
+- Free, runs on your machine
+- Data stays private
+- Lower quality than frontier
+- Variable latency (depends on hardware)
+
+**OpenAI-Compatible Endpoints:**
+- Standard format: Chat Completions API
+- Works with OpenAI client library
+- Ollama, Google Gemini, others support it
+- Enables easy model switching
+
+**Model Selection Strategy:**
+- Use frontier for production, quality-critical tasks
+- Use local for privacy, cost-sensitive, experimentation
+- Can implement fallback (try local, fallback to frontier)
+
+---
+
 ## Concepts to Reuse Later
 
 - Parse once, extract multiple times (BeautifulSoup pattern)
@@ -34,3 +61,5 @@
 - `_name` = private cache, `name` = public property
 - Class-based caching for expensive operations (network, parsing)
 - Playwright for JavaScript-rendered content (when `requests` fails)
+- OpenAI-compatible endpoints for model abstraction
+- Model comparison pattern (local vs frontier, different sizes)

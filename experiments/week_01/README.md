@@ -30,6 +30,21 @@
 - Pattern: Use `requests` for static sites, Playwright for JS-heavy sites
 - Can implement fallback strategy (try `requests` first, fallback to Playwright)
 
+### 3. Model Comparison (`model_params_comparison.ipynb`)
+**What:** Compare different LLM models (local vs frontier, different sizes)
+
+**Why:**
+- Understand tradeoffs between model types
+- Learn when to use which model
+- Compare quality vs cost vs privacy
+
+**What I learned:**
+- Frontier models (OpenAI): Better quality, paid, cloud-based
+- Local models (Ollama): Free, private, lower quality
+- OpenAI-compatible endpoints enable easy model switching
+- Model size affects speed and quality (1B vs 3B vs larger)
+- Can implement model selection strategy based on requirements
+
 ---
 
 ## Notes
