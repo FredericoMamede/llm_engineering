@@ -47,6 +47,27 @@
 
 ---
 
+## Day 3: LLM Types and Frontier Models (Theory)
+
+**No lab/exercise - theory and exploration focused**
+
+**Topics covered:**
+1. **LLM Types:** Base, Chat/Instruct, Reasoning models - understanding when to use each
+2. **Frontier Models:** GPT, Claude, Gemini, Grok, DeepSeek - strengths and limitations
+3. **Model Testing:** Web UI exploration, Deep Research tool, agent modes
+4. **Agentic AI:** Deep Research, Claude Code, Agent Mode - practical applications
+5. **Model Competition:** Outsmart game (edwarddonner.com) - comparing models head-to-head
+
+**Key insights:**
+- Base models: Better for fine-tuning, learning new skills
+- Chat/Instruct: Better for interactive use, creative content
+- Reasoning: Better for problem-solving, complex logic
+- Frontier models converging in capability; price becoming differentiator
+- Claude favored by practitioners (humor, safety, conciseness)
+- All frontier models strong at synthesizing information and nuanced answers
+
+---
+
 ## Notes
 
 See `notes.md` for detailed insights and concepts to reuse later.

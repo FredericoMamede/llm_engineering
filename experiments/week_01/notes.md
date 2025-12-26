@@ -54,6 +54,91 @@
 
 ---
 
+## LLM Model Types
+
+**Base Models:**
+- Untrained/foundation models
+- Better for fine-tuning to learn new skills
+- Starting point for custom applications
+
+**Chat/Instruct Models:**
+- Trained for conversation and instruction following
+- Better for interactive use cases, creative content generation
+- Most common for general applications
+
+**Reasoning Models:**
+- Enhanced with reasoning capabilities
+- Better for problem-solving, complex logic, step-by-step thinking
+- Examples: DeepSeek-R1, Claude Opus (reasoning mode)
+
+**Hybrid Models:**
+- Combine chat and reasoning capabilities
+- Flexible for multiple use cases
+
+**Selection Strategy:**
+- Base: When you need to fine-tune for specific domain
+- Chat: General applications, user interaction
+- Reasoning: Complex problems, logic-heavy tasks
+
+---
+
+## Frontier Models: Strengths and Limitations
+
+**OpenAI GPT:**
+- Strengths: Strong coding, general capability, fast
+- Limitations: Training cutoff, can make confident mistakes
+
+**Anthropic Claude:**
+- Strengths: Safety-focused, concise, humorous, practitioner-favored
+- Limitations: Similar to GPT in specialized domains
+
+**Google Gemini:**
+- Strengths: Multimodal, strong reasoning
+- Limitations: Variable performance across tasks
+
+**x.ai Grok:**
+- Strengths: Real-time data access, conversational
+- Limitations: Newer, less proven
+
+**DeepSeek:**
+- Strengths: Strong reasoning, cost-effective
+- Limitations: Less established ecosystem
+
+**Common Limitations Across Frontier Models:**
+- Not PhD-level in specialized domains (but improving)
+- Limited knowledge beyond training cutoff
+- Can confidently make mistakes
+- Code may use legacy APIs/models
+- Curious blindspots in reasoning
+
+**Key Insight:** As models converge in capability, price and specific strengths become differentiators.
+
+---
+
+## Agentic AI Patterns
+
+**Deep Research:**
+- Multi-step research agent
+- Synthesizes information from multiple sources
+- Good for comprehensive analysis
+
+**Claude Code:**
+- Code-focused agent mode
+- Iterative code generation and refinement
+- Better than Stack Overflow for coding help
+
+**Agent Mode:**
+- Autonomous task completion
+- Multi-step reasoning and execution
+- Pattern: Plan → Execute → Verify → Iterate
+
+**Outsmart Game:**
+- LLM competition framework (edwarddonner.com)
+- Compares models head-to-head on same tasks
+- Useful for understanding relative strengths
+
+---
+
 ## Concepts to Reuse Later
 
 - Parse once, extract multiple times (BeautifulSoup pattern)
@@ -63,3 +148,5 @@
 - Playwright for JavaScript-rendered content (when `requests` fails)
 - OpenAI-compatible endpoints for model abstraction
 - Model comparison pattern (local vs frontier, different sizes)
+- Model type selection (base vs chat vs reasoning)
+- Agentic AI patterns (research, code, autonomous agents)
