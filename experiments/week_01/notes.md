@@ -139,6 +139,120 @@
 
 ---
 
+## Transformers Architecture
+
+**Core Innovation:** Attention mechanism allows models to focus on relevant parts of input
+
+**Evolution:** LSTMs → Transformers
+- LSTMs: Sequential processing, limited context
+- Transformers: Parallel processing, long-range dependencies via attention
+- Attention: Model learns which parts of input to focus on
+
+**Why It Matters:**
+- Enables processing entire sequences in parallel (faster training)
+- Better at capturing long-range dependencies
+- Foundation for all modern LLMs (GPT, Claude, Gemini)
+
+---
+
+## Parameters: Model Scale
+
+**Parameter Count = Model Size:**
+- Millions: Early models, limited capability
+- Billions: Current standard (1B-70B range)
+- Trillions: Frontier models (GPT-4 estimated 1T+)
+
+**Examples:**
+- LLaMA 3.2: 1B, 3B variants
+- GPT-3: 175B parameters
+- GPT-4: Estimated 1T+ parameters
+- DeepSeek: Various sizes, cost-effective
+
+**Tradeoffs:**
+- More parameters = better capability, but slower inference, higher memory
+- Diminishing returns: 3B → 70B shows improvement, but 70B → 1T may not be proportional
+- Parameter count is one factor; architecture and training data matter too
+
+---
+
+## Tokens and Tokenization
+
+**What Are Tokens:**
+- Sub-word units (not characters, not words)
+- GPT tokenizer breaks text into meaningful chunks
+- Example: "banoffee" → ["ban", "offee"] (2 tokens)
+
+**Why Tokens Matter:**
+- API pricing based on tokens (input + output)
+- Context windows measured in tokens
+- Token count ≠ character count (varies by language, content)
+
+**Tokenization with tiktoken:**
+```python
+import tiktoken
+encoding = tiktoken.encoding_for_model("gpt-4")
+tokens = encoding.encode("text here")
+```
+
+**Key Insight:** Tokenization is model-specific. Different models use different tokenizers.
+
+---
+
+## Stateless LLMs: The Illusion of Memory
+
+**Critical Understanding:**
+- Every LLM API call is completely stateless
+- No built-in memory between calls
+- "Memory" is an illusion created by passing full conversation history
+
+**How It Works:**
+```python
+# First call - no context
+messages = [
+    {"role": "user", "content": "Hi! I'm Ed!"}
+]
+
+# Second call - must include previous conversation
+messages = [
+    {"role": "user", "content": "Hi! I'm Ed!"},
+    {"role": "assistant", "content": "Hi Ed! How can I help?"},
+    {"role": "user", "content": "What's my name?"}  # Now it knows
+]
+```
+
+**Implications:**
+- Must manage conversation history in application code
+- Longer conversations = more tokens = higher cost
+- Context window limits how much history can be included
+- This is how ChatGPT works - full conversation passed every time
+
+**Pattern:** As AI engineers, we implement conversation management (memory) in our applications.
+
+---
+
+## Context Windows and API Costs
+
+**Context Window:**
+- Maximum tokens a model can process in one call
+- Includes both input (prompt) and output (response)
+- Examples: GPT-4o-mini ~128K tokens, Claude Opus ~200K tokens
+
+**API Cost Structure:**
+- Charged per token (input + output)
+- Input tokens: prompt, system message, conversation history
+- Output tokens: model's response
+- Longer conversations = more input tokens = higher cost
+
+**Cost Management:**
+- Truncate old conversation history when approaching limits
+- Use summarization to compress history
+- Consider local models for long conversations (no per-token cost)
+- Monitor token usage in production
+
+**Tradeoff:** More context = better responses but higher cost and latency.
+
+---
+
 ## Concepts to Reuse Later
 
 - Parse once, extract multiple times (BeautifulSoup pattern)
@@ -150,3 +264,6 @@
 - Model comparison pattern (local vs frontier, different sizes)
 - Model type selection (base vs chat vs reasoning)
 - Agentic AI patterns (research, code, autonomous agents)
+- Stateless LLM pattern: manage conversation history in application
+- Tokenization for cost estimation and context management
+- Context window management strategies (truncation, summarization)

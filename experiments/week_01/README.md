@@ -68,6 +68,27 @@
 
 ---
 
+## Day 4: Transformers, Tokens, and LLM Fundamentals (Theory + Code)
+
+**Topics covered:**
+1. **Transformers Architecture:** Foundation behind GPT and modern LLMs
+2. **LSTMs to Transformers:** Evolution, attention mechanism, emergent intelligence
+3. **Parameters:** Scale from millions to trillions (GPT, LLaMA, DeepSeek)
+4. **Tokens:** What tokens are, how GPT tokenizes text
+5. **Tokenization:** Practical tokenization with tiktoken library
+6. **Stateless LLMs:** Understanding the "illusion of memory"
+7. **Context Windows & Costs:** Token limits, API pricing, context management
+
+**Key insights:**
+- Transformers use attention mechanism (key innovation over LSTMs)
+- Parameters scale determines capability (1B → 3B → 175B → 1T+)
+- Tokens ≠ characters (e.g., "banoffee" = "ban" + "offee" = 2 tokens)
+- Every LLM call is stateless; "memory" is passing full conversation history
+- Context window limits affect what can be processed in one call
+- API costs scale with tokens (input + output), longer conversations cost more
+
+---
+
 ## Notes
 
 See `notes.md` for detailed insights and concepts to reuse later.
