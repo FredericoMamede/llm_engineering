@@ -10,6 +10,9 @@ def count_tokens(text: Optional[str], model: str = 'gpt-4o-mini') -> Optional[in
     Token awareness is crucial for cost management and context window limits.
     Different models use different tokenizers, so we specify the model to get the right encoding.
     
+    For models not recognized by tiktoken (e.g., local Ollama models), falls back to cl100k_base
+    encoding which provides a reasonable approximation.
+    
     Args:
         text: Text to count tokens for (can be None)
         model: Model name (default: gpt-4o-mini)
@@ -19,7 +22,15 @@ def count_tokens(text: Optional[str], model: str = 'gpt-4o-mini') -> Optional[in
     """
     if text is None:
         return None
-    encoding = tiktoken.encoding_for_model(model)
+    
+    try:
+        # Try to get encoding for the specific model
+        encoding = tiktoken.encoding_for_model(model)
+    except KeyError:
+        # Fallback for models not recognized by tiktoken (e.g., local Ollama models)
+        # Use cl100k_base as a reasonable approximation (used by GPT-4, GPT-3.5)
+        encoding = tiktoken.get_encoding("cl100k_base")
+    
     return len(encoding.encode(text))
 
 def validate_text_input(text: Optional[str], min_length: int = 10) -> None:

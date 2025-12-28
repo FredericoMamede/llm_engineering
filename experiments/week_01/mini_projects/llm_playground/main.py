@@ -7,9 +7,13 @@ Demonstrates clean CLI design with proper argument parsing and error handling.
 import argparse
 import sys
 from typing import Optional, Dict, Any
+from dotenv import load_dotenv
 from pipeline import run_pipeline
 from scrapper import scrape_url
 from utils import validate_text_input, format_output
+
+# Load environment variable
+load_dotenv(override=True)
 
 
 def parse_args():
