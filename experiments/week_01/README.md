@@ -89,6 +89,33 @@
 
 ---
 
+## Day 5: Multi-Step LLM Workflows and Content Generation (Lab)
+
+**Challenge:** Build a brochure generator that creates marketing materials from company websites
+
+**Topics covered:**
+1. **Multi-step LLM workflows:** Chain multiple calls (link selection → content aggregation → generation)
+2. **One-shot prompting:** Include examples in prompt to guide output format
+3. **Structured outputs:** Use `response_format` for reliable JSON parsing
+4. **System vs user prompts:** Role definition vs specific task/data
+5. **Streaming responses:** Real-time display for better user experience
+6. **Prompt engineering:** Easy tone/style variations via system prompt
+
+**Key insights:**
+- First real Agentic AI pattern: multiple LLM calls working together
+- One-shot examples help model understand desired JSON structure
+- System prompt controls tone/style (professional vs humorous)
+- Streaming improves UX but requires more complex code
+- Context truncation important for cost and context window management
+- Pattern: Analyze → Aggregate → Generate (common in content creation)
+
+**Experiments in `prompt_variations.ipynb`:**
+- Prompt variations: More examples, different styles (professional, casual, technical)
+- Translation: Add LLM call to translate brochure to Dutch
+- Business application: Adapt pattern for different use cases
+
+---
+
 ## Notes
 
 See `notes.md` for detailed insights and concepts to reuse later.

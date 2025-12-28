@@ -253,6 +253,46 @@ messages = [
 
 ---
 
+---
+
+## Day 5: Multi-Step LLM Workflows and Content Generation
+
+**Problem:** Build a complete business solution - brochure generator that creates marketing materials from company websites
+
+**Solution Pattern:** Multi-step LLM workflow (Agentic AI pattern)
+1. First LLM call: Analyze links, select relevant ones (JSON output)
+2. Fetch content from selected links
+3. Second LLM call: Generate brochure from aggregated content
+4. Optional: Stream response for better UX
+
+**Key Techniques:**
+- **One-shot prompting:** Provide example in prompt to guide JSON structure
+- **Structured outputs:** Use `response_format={"type": "json_object"}` for reliable JSON
+- **Multi-step reasoning:** Chain multiple LLM calls (link selection → content aggregation → generation)
+- **Streaming:** Use `stream=True` for real-time response display
+
+**System vs User Prompts:**
+- System prompt: Defines role, tone, format (e.g., "You are an assistant that creates brochures...")
+- User prompt: Provides specific data and task (e.g., company name, website content)
+
+**Prompt Engineering Insights:**
+- Tone control: Easy to change system prompt for different styles (professional vs humorous)
+- Context truncation: Limit input size (e.g., `[:5_000]`) to manage costs and context windows
+- Example-driven: One-shot examples help model understand desired output format
+
+**Business Applications:**
+- Content generation (marketing materials, tutorials, emails)
+- Multi-step information synthesis
+- Personalized content creation
+- Document generation from multiple sources
+
+**Tradeoffs:**
+- Multiple LLM calls = higher cost and latency, but enables complex reasoning
+- Streaming = better UX, but requires more complex code
+- Structured outputs = reliable parsing, but less flexible than free-form text
+
+---
+
 ## Concepts to Reuse Later
 
 - Parse once, extract multiple times (BeautifulSoup pattern)
@@ -267,3 +307,9 @@ messages = [
 - Stateless LLM pattern: manage conversation history in application
 - Tokenization for cost estimation and context management
 - Context window management strategies (truncation, summarization)
+- **Multi-step LLM workflows:** Chain multiple calls for complex tasks
+- **One-shot prompting:** Include examples in prompt for format guidance
+- **Structured outputs:** Use `response_format` for reliable JSON parsing
+- **System vs user prompts:** Role definition vs specific task/data
+- **Streaming responses:** Real-time display for better UX
+- **Prompt variations:** Easy tone/style changes via system prompt
