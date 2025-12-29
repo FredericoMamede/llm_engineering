@@ -11,6 +11,9 @@ requests>=2.28.0
 beautifulsoup4>=4.11.0
 playwright>=1.40.0
 
+# Progress indicators
+tqdm>=4.66.0
+
 # Note: After installing playwright, run:
 # playwright install chromium
 

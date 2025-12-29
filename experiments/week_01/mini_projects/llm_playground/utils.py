@@ -2,6 +2,8 @@ import tiktoken
 from typing import Dict, Any, Optional
 from urllib.parse import urlparse
 import re
+from config import MIN_TEXT_LENGTH
+from logger import logger
 
 def count_tokens(text: Optional[str], model: str = 'gpt-4o-mini') -> Optional[int]:
     """
@@ -30,10 +32,11 @@ def count_tokens(text: Optional[str], model: str = 'gpt-4o-mini') -> Optional[in
         # Fallback for models not recognized by tiktoken (e.g., local Ollama models)
         # Use cl100k_base as a reasonable approximation (used by GPT-4, GPT-3.5)
         encoding = tiktoken.get_encoding("cl100k_base")
+        logger.debug(f"Model '{model}' not recognized by tiktoken. Using 'cl100k_base' encoding.")
     
     return len(encoding.encode(text))
 
-def validate_text_input(text: Optional[str], min_length: int = 10) -> None:
+def validate_text_input(text: Optional[str], min_length: Optional[int] = None) -> None:
     """
     Validate text input using fail-fast approach.
     
@@ -42,11 +45,14 @@ def validate_text_input(text: Optional[str], min_length: int = 10) -> None:
     
     Args:
         text: Text to validate (can be None)
-        min_length: Minimum required length
+        min_length: Minimum required length (defaults to MIN_TEXT_LENGTH from config)
     
     Raises:
         ValueError: If text is None or too short
     """
+    if min_length is None:
+        min_length = MIN_TEXT_LENGTH
+    
     if text is None:
         raise ValueError("Text input cannot be None")
 
@@ -105,6 +111,25 @@ def validate_url(url: str) -> None:
     except Exception as e:
         # Catch any unexpected parsing errors
         raise ValueError(f"Invalid URL format: {url}. Error: {e}")
+
+def format_output_json(results: Dict[str, Any]) -> str:
+    """
+    Format pipeline results as JSON.
+    
+    Week 1 learning: Structured output (JSON) is easier to parse programmatically.
+    Useful for integration with other tools or automated processing.
+    
+    Args:
+        results: Dictionary with all pipeline results
+    
+    Returns:
+        JSON-formatted string
+    """
+    import json
+    # Create clean output dict (remove None values for cleaner JSON)
+    output = {k: v for k, v in results.items() if v is not None and k != 'errors'}
+    return json.dumps(output, indent=2, ensure_ascii=False)
+
 
 def format_output(
     results: Dict[str, Any],

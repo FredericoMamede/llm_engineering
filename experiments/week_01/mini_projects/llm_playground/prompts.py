@@ -1,4 +1,8 @@
 from typing import Dict, Tuple
+from config import (
+    ANALYSIS_MAX_CHARS, TRANSFORM_MAX_CHARS, TRANSLATION_MAX_CHARS,
+    get_language_name
+)
 
 def get_analysis_prompt(content: str) -> Tuple[str, str]:
     """
@@ -28,11 +32,12 @@ Focus on actionable insights that will help improve the content."""
 
 
     
-    # Week 1 learning: Truncate content to manage costs (3000 chars is usually enough for analysis)
+    # Week 1 learning: Truncate content to manage costs
     # Always be aware of token costs when building prompts
+    truncated_content = content[:ANALYSIS_MAX_CHARS]
     user = f"""Analyze this content and provide insights about its topics, tone, and structure:
 
-{content[:3000]}
+{truncated_content}
 
 Provide a clear analysis that identifies:
 1. Main topics and themes
@@ -43,7 +48,7 @@ Provide a clear analysis that identifies:
     return system, user
 
 
-def get_transform_prompt(content: str, analysis: Dict, tone: str) -> Tuple[str, str]:
+def get_transform_prompt(content: str, analysis: Dict, tone: str, json_mode: bool = False) -> Tuple[str, str]:
     """
     Return prompts for content transformation.
     
@@ -54,6 +59,7 @@ def get_transform_prompt(content: str, analysis: Dict, tone: str) -> Tuple[str, 
         content: Original text content
         analysis: Analysis results from previous step (may contain insights)
         tone: Desired tone for rewritten content (professional, casual, technical, humorous)
+        json_mode: Whether to use JSON mode (requires JSON output format)
     
     Returns:
         Tuple of (system_prompt, user_prompt)
@@ -81,7 +87,26 @@ Make it fun to read while preserving the essential information."""
     }
     
     system = tone_prompts.get(tone.lower(), tone_prompts['professional'])
-    system += """
+    
+    if json_mode:
+        # Week 1 learning: JSON mode requires explicit JSON schema instruction
+        # This ensures the model returns valid, parseable JSON
+        system += """
+
+Your task is to transform the provided content into a JSON object with three fields:
+1. "summary": A concise summary (2-3 sentences)
+2. "key_points": An array of 3-5 main bullet points
+3. "rewritten": A rewritten version in the specified tone
+
+You MUST respond with valid JSON only, no markdown, no additional text.
+Use this exact JSON structure:
+{
+  "summary": "...",
+  "key_points": ["...", "...", "..."],
+  "rewritten": "..."
+}"""
+    else:
+        system += """
 
 Your task is to transform the provided content into three formats:
 1. A concise summary (2-3 sentences)
@@ -96,7 +121,8 @@ Respond in markdown format with clear sections:
     # Build user prompt with content and analysis context
     # Week 1 learning: Use analysis results to guide transformation (agentic pattern)
     # The analysis from the previous step helps the LLM make better transformation decisions
-    user_parts = [f"Transform this content using a {tone} tone:\n\n{content[:4000]}"]
+    truncated_content = content[:TRANSFORM_MAX_CHARS]
+    user_parts = [f"Transform this content using a {tone} tone:\n\n{truncated_content}"]
     
     # Include analysis insights if available (this is the "multi-step workflow" pattern)
     # The analysis step informs the transformation step, making it more effective
@@ -127,22 +153,9 @@ def get_translation_prompt(text: str, target_lang: str) -> Tuple[str, str]:
     Returns:
         Tuple of (system_prompt, user_prompt)
     """
-    # Language name mapping: convert codes to full names for better prompts
-    # "nl" -> "Dutch" makes the prompt clearer for the LLM
-    lang_names = {
-        'nl': 'Dutch',
-        'es': 'Spanish',
-        'fr': 'French',
-        'de': 'German',
-        'it': 'Italian',
-        'pt': 'Portuguese',
-        'ja': 'Japanese',
-        'zh': 'Chinese',
-        'ko': 'Korean',
-        'ru': 'Russian'
-    }
-    
-    lang_name = lang_names.get(target_lang.lower(), target_lang.upper())
+    # Week 1 learning: Use config helper for language name mapping
+    # Centralized config makes it easy to add more languages
+    lang_name = get_language_name(target_lang)
     
     system = f"""You are an expert translator.
 Your task is to translate text from English to {lang_name} while:
@@ -152,11 +165,12 @@ Your task is to translate text from English to {lang_name} while:
 
 Translate accurately and naturally, as if written originally in {lang_name}."""
     
-    # Week 1 learning: Truncate to manage costs (3000 chars is usually enough for translation)
+    # Week 1 learning: Truncate to manage costs
     # Always be cost-aware when building prompts
+    truncated_text = text[:TRANSLATION_MAX_CHARS]
     user = f"""Translate the following text to {lang_name}:
 
-{text[:3000]}
+{truncated_text}
 
 Provide only the translation, without additional commentary or explanations."""
     

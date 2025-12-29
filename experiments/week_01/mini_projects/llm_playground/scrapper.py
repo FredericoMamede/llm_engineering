@@ -3,19 +3,10 @@ from bs4 import BeautifulSoup
 import requests
 from playwright.sync_api import sync_playwright  # type: ignore
 from utils import validate_url
-
-# Headers to mimic a real browser (prevents blocking)
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36"
-}
-
-
-# Cost management: limit content length for LLM processing
-MAX_CONTENT_LENGTH = 2000
-# Timeout for HTTP requests (seconds)
-REQUEST_TIMEOUT = 10
-# Timeout for Playwright navigation (milliseconds)
-PLAYWRIGHT_TIMEOUT = 30000
+from config import (
+    HEADERS, MAX_CONTENT_LENGTH, REQUEST_TIMEOUT, PLAYWRIGHT_TIMEOUT
+)
+from logger import logger
 
 
 class WebsiteScraper:
@@ -41,6 +32,7 @@ class WebsiteScraper:
         
         # Make HTTP request with browser headers (prevents blocking) and timeout
         # Using constant instead of magic number makes it easy to adjust later
+        logger.debug(f"Fetching URL: {url}")
         self.response = requests.get(url, headers=HEADERS, timeout=REQUEST_TIMEOUT)
         self.response.raise_for_status()  # Raise exception for bad status codes (4xx, 5xx)
         
@@ -99,7 +91,7 @@ class WebsiteScraper:
         return self._content
 
 
-def scrape_static(url: str, max_length: int = MAX_CONTENT_LENGTH) -> str:
+def scrape_static(url: str, max_length: Optional[int] = None) -> str:
     """
     Scrape static HTML content using requests + BeautifulSoup.
     
@@ -110,7 +102,7 @@ def scrape_static(url: str, max_length: int = MAX_CONTENT_LENGTH) -> str:
     
     Args:
         url: URL to scrape
-        max_length: Maximum content length (default: MAX_CONTENT_LENGTH)
+        max_length: Maximum content length (default: MAX_CONTENT_LENGTH from config)
     
     Returns:
         Clean text content (title + body text, limited to max_length)
@@ -119,12 +111,16 @@ def scrape_static(url: str, max_length: int = MAX_CONTENT_LENGTH) -> str:
         requests.RequestException: If HTTP request fails
         ValueError: If URL is invalid or response is empty
     """
+    if max_length is None:
+        max_length = MAX_CONTENT_LENGTH
+    
     validate_url(url)  # Week 1 pattern: Fail fast - validate before expensive operations
+    logger.debug(f"Scraping static content from: {url}")
     scraper = WebsiteScraper(url, max_length=max_length)
     return scraper.content
 
 
-def scrape_with_playwright(url: str, max_length: int = MAX_CONTENT_LENGTH) -> str:
+def scrape_with_playwright(url: str, max_length: Optional[int] = None) -> str:
     """
     Scrape JavaScript-rendered content using Playwright.
     
@@ -136,7 +132,7 @@ def scrape_with_playwright(url: str, max_length: int = MAX_CONTENT_LENGTH) -> st
     
     Args:
         url: URL to scrape
-        max_length: Maximum content length (default: MAX_CONTENT_LENGTH)
+        max_length: Maximum content length (default: MAX_CONTENT_LENGTH from config)
     
     Returns:
         Clean text content (title + body text, limited to max_length)
@@ -145,7 +141,11 @@ def scrape_with_playwright(url: str, max_length: int = MAX_CONTENT_LENGTH) -> st
         Exception: If Playwright fails or browser cannot be launched
         ValueError: If URL is invalid
     """
+    if max_length is None:
+        max_length = MAX_CONTENT_LENGTH
+    
     validate_url(url)  # Fail fast if URL is invalid
+    logger.debug(f"Scraping with Playwright from: {url}")
     
     # Playwright context manager ensures browser is closed even if errors occur
     with sync_playwright() as p:
@@ -182,14 +182,14 @@ def scrape_with_playwright(url: str, max_length: int = MAX_CONTENT_LENGTH) -> st
     # Combine title and content, limit length for cost management
     content = (title + "\n\n" + text)[:max_length]
     
-    # Edge case: if content is empty after extraction, provide fallback
+    # Edge case: if content is empty after extraction, fallback
     if not content.strip():
         content = "No content found on page"
     
     return content
 
 
-def scrape_url(url: str, max_length: int = MAX_CONTENT_LENGTH) -> str:
+def scrape_url(url: str, max_length: Optional[int] = None) -> str:
     """
     Scrape URL with intelligent fallback strategy.
     
@@ -201,7 +201,7 @@ def scrape_url(url: str, max_length: int = MAX_CONTENT_LENGTH) -> str:
     
     Args:
         url: URL to scrape
-        max_length: Maximum content length (default: MAX_CONTENT_LENGTH)
+        max_length: Maximum content length (default: MAX_CONTENT_LENGTH from config)
     
     Returns:
         Clean text content from the webpage
@@ -209,14 +209,19 @@ def scrape_url(url: str, max_length: int = MAX_CONTENT_LENGTH) -> str:
     Raises:
         ValueError: If both methods fail or URL is invalid
     """
+    if max_length is None:
+        max_length = MAX_CONTENT_LENGTH
+    
     # Week 1 learning: More specific exception handling provides better error context
     # Catch specific request exceptions instead of generic Exception
     # This makes debugging easier - know exactly what went wrong
+    logger.info(f"Attempting to scrape URL: {url}")
     try:
         return scrape_static(url, max_length=max_length)
     except (requests.RequestException, requests.Timeout, requests.HTTPError, ValueError) as e:
         # Static scraping failed - try Playwright fallback for JavaScript-rendered sites
         # This is the "try lightweight first, fallback to heavier solution" pattern from Week 1
+        logger.info(f"Static scraping failed, trying Playwright fallback: {type(e).__name__}")
         try:
             return scrape_with_playwright(url, max_length=max_length)
         except Exception as e2:
