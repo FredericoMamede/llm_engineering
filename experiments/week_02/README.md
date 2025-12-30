@@ -106,12 +106,16 @@ This is a **learning lab**, not a portfolio project. Experiments here are:
 - Understand conversation history management
 - Learn message structure for multi-turn interactions
 - Practice building agentic AI patterns
+- Compare two approaches: structured vs simple
 
 **What I learned:**
+- **Two approaches:**
+  - **Structured messages:** Complex but fine-grained control
+  - **Simple list + narrative:** Easier! One list, append responses, reuse template
 - Message structure: `[{"role": "system/user/assistant", "content": "..."}]`
 - Each model needs full conversation history to maintain context
 - System prompts define personality, user/assistant messages build history
-- Pattern: Build history incrementally, each model sees all previous exchanges
+- **Simple approach pattern:** Single conversation list, narrative-style user prompt, just append after each response
 - Can create 2-way, 3-way, 4-way conversations with different personalities
 
 ## Notebooks

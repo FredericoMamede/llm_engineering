@@ -169,7 +169,9 @@ messages = [
 
 **Problem:** Create conversations between multiple chatbots with different personalities
 
-**Solution:** Build conversation history with message structure
+**Solution:** Two approaches - choose based on complexity needs
+
+#### Approach 1: Structured Messages (More Complex)
 
 **Message Structure:**
 ```python
@@ -181,12 +183,6 @@ messages = [
 ]
 ```
 
-**Key Concepts:**
-- **System prompt:** Defines personality/role
-- **User messages:** Input from other models or users
-- **Assistant messages:** Model's own responses
-- **Full history:** Each call includes entire conversation
-
 **4-Way Conversation Pattern:**
 ```python
 # Each model sees conversation from all others
@@ -197,10 +193,42 @@ for gpt, gemini, ollama, deepseek in zip(gpt_messages, gemini_messages, ollama_m
     messages.append({"role": "assistant", "content": deepseek})  # This model's response
 ```
 
+**When to use:** Need fine-grained control over message structure
+
+#### Approach 2: Simple List + Narrative (Easier!) ⭐
+
 **Pattern:**
-- Build history incrementally
-- Each model sees all previous exchanges
-- System prompt controls personality
+```python
+# Single conversation list
+conversation = ["GPT: Hi", "Gemini: Hi", "Ollama: Hello"]
+
+# System prompt mentions other participants
+system_prompt = """You are GPT, argumentative chatbot.
+You are in a conversation with Gemini and Ollama."""
+
+# User prompt includes full conversation as narrative
+user_prompt = f"""You are GPT, in conversation with Gemini and Ollama.
+The conversation so far is as follows:
+{chr(10).join(conversation)}
+Now respond as GPT."""
+
+# Just append after each response
+conversation.append(f"GPT: {response}")
+```
+
+**Key Benefits:**
+- **One list** instead of multiple message lists
+- **Simple append** after each response
+- **Reuse same template** for user prompt
+- **Easier to debug** - conversation is just a list of strings
+- **More reliable** for multi-way conversations
+
+**When to use:** Default choice - simpler and more maintainable
+
+**Pattern:**
+- Build history incrementally (just append to list)
+- Each model sees all previous exchanges (full conversation in user prompt)
+- System prompt controls personality and mentions other participants
 - Can create 2-way, 3-way, 4-way+ conversations
 
 **Business Relevance:**

@@ -27,12 +27,16 @@
 
 ### Multi-Model Conversations
 
-**Finding:** Message structure is fundamental for conversational AI
-- System prompt defines personality
+**Finding:** Two approaches - simple is better for most cases
+- **Simple approach:** Single conversation list + narrative prompt (easier!)
+- **Structured approach:** Complex message building with roles (more control)
+- System prompt defines personality and mentions other participants
 - Full conversation history needed for context
-- Can create complex multi-agent interactions
 
-**Pattern:** Build history incrementally, each model sees all exchanges
+**Pattern:** 
+- Simple: One list, append responses, reuse template
+- Structured: Build history incrementally with role-based messages
+- Both work, but simple approach is more maintainable
 
 ### Model Comparison
 
