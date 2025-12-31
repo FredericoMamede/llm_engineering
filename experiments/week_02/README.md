@@ -118,6 +118,72 @@ This is a **learning lab**, not a portfolio project. Experiments here are:
 - **Simple approach pattern:** Single conversation list, narrative-style user prompt, just append after each response
 - Can create 2-way, 3-way, 4-way conversations with different personalities
 
+## Day 2: Gradio UI Development
+
+### What I'm Testing
+
+#### 1. Gradio Basics (`notebooks/06_gradio_intro.ipynb`)
+**What:** Build simple user interfaces for LLM applications using Gradio
+
+**Why:**
+- Create demos and prototypes quickly
+- Build internal tools for power users
+- Share LLM applications with others
+- Learn streaming UI patterns
+
+**What I learned:**
+- **Simple interface creation:** `gr.Interface(fn=function, inputs=[...], outputs=[...])`
+- **Component types:** Textbox, Dropdown, Markdown for different input/output needs
+- **Streaming support:** Use generators with `yield` keyword for real-time updates
+- **Sharing options:** `share=True` for public links, `inbrowser=True` for auto-open
+- **Authentication:** Easy password protection with `auth=("user", "pass")`
+- Pattern: Gradio is perfect for demos, prototypes, and MVPs
+
+#### 2. Streaming with Generators (`notebooks/06_gradio_intro.ipynb`)
+**What:** Implement real-time streaming responses in Gradio UI
+
+**Why:**
+- Better user experience (see responses as they generate)
+- Understand Python generator pattern
+- Learn how to stream LLM responses to UI
+
+**What I learned:**
+- **Generator pattern:** Function must `yield` values, not `return` once
+- **Streaming structure:** `for chunk in stream: yield accumulated_response`
+- **Gradio auto-detection:** Gradio automatically detects generator functions
+- Pattern: Use `yield` for streaming, `return` for one-shot responses
+
+#### 3. Multi-Model UI with Class-Based Design (`week1/day5.ipynb`)
+**What:** Build brochure generator UI supporting multiple models (GPT, Ollama) with unified class
+
+**Why:**
+- Learn class-based architecture for multi-model support
+- Understand model registry pattern
+- Practice clean code organization
+
+**What I learned:**
+- **Class-based approach:** Encapsulate all model logic in one class
+- **Model registry pattern:** Dictionary mapping model names to (client, model_name) tuples
+- **Unified interface:** Single `stream_brochure` method works for all models
+- **Automatic detection:** Check Ollama availability, only include if running
+- **Benefits:** No code duplication, easy to extend, self-documenting
+- Pattern: Class with model registry is cleaner than separate functions per model
+
+#### 4. UI Component Types (`notebooks/07_gradio_intro.ipynb`)
+**What:** Use different Gradio components for different needs
+
+**Why:**
+- Understand when to use which component
+- Learn component configuration options
+- Build professional-looking UIs
+
+**What I learned:**
+- **Textbox:** For text input/output, configurable with `lines`, `label`, `info`
+- **Dropdown:** For model selection, predefined options
+- **Markdown:** For rich text output (formatted responses)
+- **Examples:** Pre-populate UI with example inputs
+- Pattern: Choose component based on data type and user interaction needs
+
 ## Notebooks
 
 1. `00_multi_provider_setup.ipynb` - Setting up multiple API providers
@@ -127,7 +193,7 @@ This is a **learning lab**, not a portfolio project. Experiments here are:
 5. `04_prompt_caching.ipynb` - Prompt caching cost optimization
 6. `05_model_comparison.ipynb` - Comparing different models on same tasks
 7. `06_multi_model_conversations.ipynb` - Multi-model conversation patterns
-8. `07_gradio_intro.ipynb` - Building simple UIs with Gradio
+8. `06_gradio_intro.ipynb` - Building simple UIs with Gradio (Day 2)
 
 ## Mini Projects
 

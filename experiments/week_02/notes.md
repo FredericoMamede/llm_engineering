@@ -239,6 +239,131 @@ conversation.append(f"GPT: {response}")
 
 ---
 
+## Day 2: Gradio UI Development
+
+### Gradio Basics
+
+**Problem:** Need to create user interfaces for LLM applications quickly
+
+**Solution:** Use Gradio framework - simple Python library for building UIs
+
+**Key Concepts:**
+- **Interface creation:** `gr.Interface(fn=function, inputs=[...], outputs=[...])`
+- **Component types:** Textbox, Dropdown, Markdown, etc.
+- **Launch options:** `share=True` (public link), `inbrowser=True` (auto-open), `auth=("user", "pass")` (password)
+- **Examples:** Pre-populate UI with example inputs
+
+**Basic Pattern:**
+```python
+import gradio as gr
+
+def my_function(input_text):
+    # Process input
+    return output_text
+
+gr.Interface(
+    fn=my_function,
+    inputs=gr.Textbox(label="Input:"),
+    outputs=gr.Textbox(label="Output:"),
+    examples=["example1", "example2"],
+    flagging_mode="never"
+).launch()
+```
+
+**Tradeoff:**
+- **Gradio:** Fast prototyping, simple, but limited customization
+- **Custom web app:** Full control, but much more complex
+- **Pattern:** Use Gradio for demos/prototypes/MVPs, custom for production
+
+---
+
+### Streaming with Generators
+
+**Problem:** LLM responses take time - want to show progress to user
+
+**Solution:** Use Python generators with `yield` keyword for streaming
+
+**How It Works:**
+```python
+def stream_llm(prompt):
+    stream = client.chat.completions.create(model=model, messages=messages, stream=True)
+    result = ""
+    for chunk in stream:
+        result += chunk.choices[0].delta.content or ""
+        yield result  # Yield accumulated result each time
+```
+
+**Key Points:**
+- **Generator function:** Must use `yield`, not `return`
+- **Gradio auto-detection:** Gradio automatically detects generator functions
+- **Incremental updates:** UI updates as each chunk arrives
+- **User experience:** Much better than waiting for complete response
+
+**Pattern:**
+- Use `yield` for streaming (real-time updates)
+- Use `return` for one-shot responses (complete at once)
+- Accumulate response in loop, yield after each chunk
+
+**Tradeoff:**
+- **Streaming:** Better UX, but more complex code (generators)
+- **One-shot:** Simpler code, but user waits for complete response
+
+---
+
+### Multi-Model UI with Class-Based Design
+
+**Problem:** Want to support multiple models in UI without code duplication
+
+**Solution:** Class-based architecture with model registry pattern
+
+**Pattern:**
+```python
+class BrochureGenerator:
+    def __init__(self):
+        # Initialize all clients
+        self.openai_client = OpenAI()
+        
+        # Check Ollama availability
+        try:
+            requests.get("http://localhost:11434/", timeout=2)
+            self.ollama_client = OpenAI(api_key="ollama", base_url="http://localhost:11434/v1")
+            self.ollama_available = True
+        except:
+            self.ollama_available = False
+        
+        # Model registry: maps display name to (client, model_name)
+        self.models = {
+            "GPT": (self.openai_client, "gpt-4.1-mini"),
+        }
+        if self.ollama_available:
+            self.models["Ollama"] = (self.ollama_client, "llama3.2")
+    
+    def stream_brochure(self, company_name, url, model_name):
+        # Unified method - works for all models
+        client, model = self.models[model_name]
+        # ... streaming logic ...
+        yield response
+```
+
+**Key Benefits:**
+- **No duplication:** Single method works for all models
+- **Easy to extend:** Just add to `models` dictionary
+- **Self-documenting:** Registry shows what's available
+- **Automatic detection:** Only includes models that are available
+- **Clean architecture:** Encapsulates all model logic
+
+**Pattern:**
+- Model registry: Dictionary mapping names to (client, model_name) tuples
+- Unified method: Single function that works with any model in registry
+- Automatic detection: Check availability, only include if ready
+- Easy extension: Add new models by updating dictionary
+
+**Tradeoff:**
+- **Class-based:** Cleaner, more maintainable, but requires class design
+- **Separate functions:** Simpler initially, but duplicates code as models grow
+
+---
+
 ## Key Learnings
 
 ### Multi-Provider APIs
@@ -265,6 +390,12 @@ conversation.append(f"GPT: {response}")
 - Full conversation history needed for context
 - Pattern: Build incrementally, each model sees all exchanges
 
+### UI Development with Gradio
+- Gradio is perfect for demos, prototypes, and MVPs
+- Streaming requires generator pattern (`yield` not `return`)
+- Class-based design with model registry simplifies multi-model UIs
+- Pattern: Use Gradio for fast prototyping, custom web for production
+
 ## Tradeoffs Observed
 
 ### Cost vs Quality
@@ -283,6 +414,12 @@ conversation.append(f"GPT: {response}")
 - Local models: Private, but limited capability
 - Cloud models: Better capability, but data leaves machine
 - Pattern: Use local for sensitive data, cloud for general use
+
+### Prototyping vs Production
+- Gradio: Fast prototyping, simple, but limited customization
+- Custom web: Full control, but much more complex
+- Streaming: Better UX, but requires generator pattern
+- Pattern: Use Gradio for demos/MVPs, custom for production apps
 
 ## Reusable Patterns
 
@@ -332,6 +469,37 @@ def compare_models(task, models):
     return results
 ```
 
+### Gradio Streaming Pattern
+```python
+# Pattern: Streaming LLM responses to Gradio UI
+def stream_llm(prompt):
+    stream = client.chat.completions.create(model=model, messages=messages, stream=True)
+    result = ""
+    for chunk in stream:
+        result += chunk.choices[0].delta.content or ""
+        yield result  # Yield accumulated result for real-time updates
+```
+
+### Class-Based Multi-Model UI
+```python
+# Pattern: Unified model interface with class and registry
+class LLMGenerator:
+    def __init__(self):
+        self.models = {
+            "GPT": (openai_client, "gpt-4.1-mini"),
+            "Ollama": (ollama_client, "llama3.2")
+        }
+    
+    def generate(self, prompt, model_name):
+        client, model = self.models[model_name]
+        # Unified logic for all models
+        stream = client.chat.completions.create(model=model, messages=messages, stream=True)
+        result = ""
+        for chunk in stream:
+            result += chunk.choices[0].delta.content or ""
+            yield result
+```
+
 ## Questions to Explore Further
 
 - [ ] How to implement automatic model selection based on task?
@@ -343,12 +511,13 @@ def compare_models(task, models):
 
 ## References
 
-- Course material: Week 2 Day 1 notebook
+- Course material: Week 2 Day 1 & Day 2 notebooks
 - OpenAI API docs: https://platform.openai.com/docs
 - Anthropic API docs: https://docs.anthropic.com
 - LiteLLM docs: https://docs.litellm.ai
 - LangChain docs: https://python.langchain.com
 - OpenRouter docs: https://openrouter.ai/docs
 - Ollama docs: https://ollama.ai/docs
+- Gradio docs: https://www.gradio.app/guides/quickstart
 
 

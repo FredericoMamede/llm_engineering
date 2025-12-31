@@ -48,3 +48,45 @@
 - Local (Ollama): Free, private, but lower quality
 
 **Strategy:** Test multiple models for production use cases
+
+## Day 2: Gradio UI Development
+
+### Gradio Basics
+
+**Finding:** Gradio makes UI creation incredibly simple
+- Basic interface: `gr.Interface(fn=function, inputs=[...], outputs=[...])`
+- Component types: Textbox, Dropdown, Markdown for different needs
+- Sharing: `share=True` for public links, `inbrowser=True` for auto-open
+- Authentication: Easy password protection
+
+**Tradeoff:** Fast prototyping vs customization
+- Gradio: Fast, simple, but limited customization
+- Custom web: Full control, but much more complex
+
+### Streaming with Generators
+
+**Finding:** Generator pattern enables real-time streaming in UI
+- Must use `yield` keyword, not `return`
+- Gradio automatically detects generator functions
+- Better UX: users see responses as they generate
+
+**Pattern:**
+- Accumulate response in loop
+- Yield after each chunk
+- UI updates incrementally
+
+### Class-Based Multi-Model Design
+
+**Finding:** Model registry pattern simplifies multi-model UIs
+- Single class encapsulates all model logic
+- Dictionary maps model names to (client, model_name) tuples
+- Unified method works for all models
+- No code duplication, easy to extend
+
+**Benefits:**
+- Cleaner code than separate functions per model
+- Self-documenting (registry shows available models)
+- Automatic detection (only includes available models)
+- Easy to add new models (just update dictionary)
+
+**Pattern:** Class with model registry > separate functions per model
