@@ -169,7 +169,7 @@ This is a **learning lab**, not a portfolio project. Experiments here are:
 - **Benefits:** No code duplication, easy to extend, self-documenting
 - Pattern: Class with model registry is cleaner than separate functions per model
 
-#### 4. UI Component Types (`notebooks/07_gradio_intro.ipynb`)
+#### 4. UI Component Types (`notebooks/06_gradio_intro.ipynb`)
 **What:** Use different Gradio components for different needs
 
 **Why:**
