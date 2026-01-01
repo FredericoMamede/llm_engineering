@@ -752,6 +752,566 @@ def chat(message, history):
     # ... API call ...
 ```
 
+## Day 4: Tool Calling / Function Calling
+
+### Tool Calling Fundamentals
+
+**Problem:** Need LLM to interact with external systems (databases, APIs, functions)
+
+**Solution:** Tool calling - LLM can call Python functions as tools
+
+**Key Concepts:**
+- **Tool definition:** JSON schema describing function (name, description, parameters)
+- **Tool call flow:** LLM decides → returns tool_calls → execute → return result → LLM continues
+- **Message types:** `assistant` (with tool_calls), `tool` (with tool_call_id), `user`, `system`
+- **Tool response:** Must include `role: "tool"`, `content: result`, `tool_call_id: id`
+
+**Tool Definition Format:**
+```python
+tool_definition = {
+    "name": "get_ticket_price",
+    "description": "Get the price of a return ticket to a destination city.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "destination_city": {
+                "type": "string",
+                "description": "The city that the customer wants to travel to"
+            }
+        },
+        "required": ["destination_city"],
+        "additionalProperties": False
+    }
+}
+
+tools = [{"type": "function", "function": tool_definition}]
+```
+
+**Tool Call Detection:**
+```python
+response = openai.chat.completions.create(
+    model=MODEL,
+    messages=messages,
+    tools=tools
+)
+
+# Check if LLM wants to call a tool
+if response.choices[0].finish_reason == "tool_calls":
+    assistant_message = response.choices[0].message
+    # assistant_message.tool_calls contains list of tool calls
+```
+
+**Tool Execution:**
+```python
+for tool_call in assistant_message.tool_calls:
+    function_name = tool_call.function.name
+    arguments = json.loads(tool_call.function.arguments)
+    tool_call_id = tool_call.id
+    
+    # Execute function
+    result = function(**arguments)
+    
+    # Return tool response
+    tool_response = {
+        "role": "tool",
+        "content": result,
+        "tool_call_id": tool_call_id
+    }
+```
+
+**Pattern:** Tools enable LLMs to interact with databases, APIs, and external systems
+
+**Tradeoff:**
+- **Manual implementation:** Full control, understand mechanics, but complex
+- **SDKs (OpenAI Agent SDK):** Easier, but abstracts away understanding
+
+---
+
+### Function Registry Pattern
+
+**Problem:** If/elif chains don't scale when adding new tools
+
+**Solution:** Dictionary-based registry for tool routing
+
+**Registry Structure:**
+```python
+TOOL_REGISTRY: Dict[str, Callable] = {
+    "get_ticket_price": get_ticket_price,
+    "set_ticket_price": set_ticket_price,
+}
+
+# Dynamic lookup and execution
+function_name = tool_call.function.name
+func = TOOL_REGISTRY[function_name]
+arguments = json.loads(tool_call.function.arguments)
+result = func(**arguments)  # Unpack dict as keyword arguments
+```
+
+**Benefits:**
+- **No if statements:** Dictionary lookup replaces conditional chains
+- **Easy to extend:** Adding new tool = one line in registry + function definition
+- **Scales beautifully:** Works with 2 tools or 200 tools
+- **Clean code:** Self-documenting (registry shows all available tools)
+
+**Pattern:** Function registry > if/elif chains for tool routing
+
+**Tradeoff:**
+- **Registry pattern:** Cleaner, more maintainable, but requires discipline
+- **If/elif chains:** Simple for 2-3 tools, but becomes unmaintainable quickly
+
+---
+
+### SQLite for Conversation History
+
+**Problem:** Gradio's in-memory history is ephemeral (lost on restart)
+
+**Solution:** Store conversation history in SQLite database
+
+**Database Schema:**
+```python
+CREATE TABLE IF NOT EXISTS conversations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id TEXT NOT NULL,
+    role TEXT NOT NULL,
+    content TEXT,
+    tool_calls TEXT,  # JSON string for assistant messages, tool_call_id for tool messages
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+)
+CREATE INDEX IF NOT EXISTS idx_session ON conversations(session_id)
+```
+
+**Saving Messages:**
+```python
+def save_message(session_id: str, role: str, content: str, tool_calls: Optional[str] = None):
+    with sqlite3.connect(DB_CONVERSATIONS) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            'INSERT INTO conversations (session_id, role, content, tool_calls) VALUES (?, ?, ?, ?)',
+            (session_id, role, content, tool_calls)
+        )
+        conn.commit()
+```
+
+**Loading Conversation:**
+```python
+def load_conversation(session_id: str) -> List[Dict[str, Any]]:
+    with sqlite3.connect(DB_CONVERSATIONS) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            'SELECT role, content, tool_calls FROM conversations WHERE session_id = ? ORDER BY id',
+            (session_id,)
+        )
+        rows = cursor.fetchall()
+        
+        messages = []
+        for role, content, tool_calls_json in rows:
+            msg = {"role": role, "content": content or ""}
+            
+            # Reconstruct assistant messages with tool_calls
+            if role == "assistant" and tool_calls_json:
+                tool_calls_data = json.loads(tool_calls_json)
+                msg["tool_calls"] = tool_calls_data
+            
+            # Reconstruct tool messages with tool_call_id
+            elif role == "tool" and tool_calls_json:
+                msg["tool_call_id"] = tool_calls_json  # tool_calls column stores tool_call_id for tool messages
+            
+            messages.append(msg)
+        
+        return messages
+```
+
+**Key Points:**
+- **Tool calls storage:** Store as JSON string for assistant messages
+- **Tool call ID storage:** Store tool_call_id in tool_calls column for tool messages
+- **History reconstruction:** Parse JSON, reconstruct full conversation for API
+- **Session management:** Filter by session_id for multi-user support
+
+**Pattern:** SQLite for conversation history > in-memory storage for production apps
+
+**Tradeoff:**
+- **SQLite:** Persistent, queryable, production-ready, but requires database setup
+- **In-memory:** Simple, fast, but ephemeral (lost on restart)
+
+---
+
+### Manual Tool Calling Implementation
+
+**Problem:** SDKs abstract away the mechanics - need to understand what happens under the hood
+
+**Solution:** Implement tool calling manually to learn the complete flow
+
+**Complete Flow:**
+```python
+def chat(message: str, history, session_id: str):
+    # 1. Load conversation from database
+    messages = load_conversation(session_id)
+    
+    # 2. Add system message if first message
+    if not messages:
+        messages = [{"role": "system", "content": system_message}]
+        save_message(session_id, "system", system_message)
+    
+    # 3. Add user message
+    messages.append({"role": "user", "content": message})
+    save_message(session_id, "user", message)
+    
+    # 4. Initial API call (try streaming)
+    response = openai.chat.completions.create(
+        model=MODEL,
+        messages=messages,
+        tools=tools,
+        stream=True
+    )
+    
+    # 5. Detect tool calls in stream
+    accumulated_content = ""
+    tool_calls_detected = False
+    finish_reason = None
+    
+    for chunk in response:
+        if chunk.choices[0].delta.content:
+            accumulated_content += chunk.choices[0].delta.content
+            yield accumulated_content
+        
+        if chunk.choices[0].delta.tool_calls:
+            tool_calls_detected = True
+        
+        if chunk.choices[0].finish_reason:
+            finish_reason = chunk.choices[0].finish_reason
+    
+    # 6. If tool calls detected, switch to non-streaming
+    if tool_calls_detected or finish_reason == "tool_calls":
+        response = openai.chat.completions.create(
+            model=MODEL,
+            messages=messages,
+            tools=tools
+        )
+        
+        # 7. Handle tool calls loop
+        while response.choices[0].finish_reason == "tool_calls":
+            assistant_message = response.choices[0].message
+            
+            # Save assistant message with tool calls
+            tool_calls_json = json.dumps([tc.model_dump() for tc in assistant_message.tool_calls])
+            save_message(session_id, "assistant", assistant_message.content or "", tool_calls_json)
+            messages.append(assistant_message)
+            
+            # Execute tools
+            tool_responses = handle_tool_calls(assistant_message)
+            messages.extend(tool_responses)
+            
+            # Save tool responses
+            for tool_resp in tool_responses:
+                save_message(session_id, "tool", tool_resp["content"], tool_resp.get("tool_call_id"))
+            
+            # Continue conversation
+            response = openai.chat.completions.create(
+                model=MODEL,
+                messages=messages,
+                tools=tools,
+                stream=True
+            )
+            
+            # Stream response after tool execution
+            accumulated_content = ""
+            finish_reason = None
+            more_tool_calls_detected = False
+            
+            for chunk in response:
+                if chunk.choices[0].delta.content:
+                    accumulated_content += chunk.choices[0].delta.content
+                    yield accumulated_content
+                
+                if chunk.choices[0].delta.tool_calls:
+                    more_tool_calls_detected = True
+                    break
+                
+                if chunk.choices[0].finish_reason:
+                    finish_reason = chunk.choices[0].finish_reason
+            
+            # Check if more tool calls needed
+            if more_tool_calls_detected or finish_reason == "tool_calls":
+                response = openai.chat.completions.create(
+                    model=MODEL,
+                    messages=messages,
+                    tools=tools
+                )
+            else:
+                if accumulated_content:
+                    save_message(session_id, "assistant", accumulated_content)
+                break
+```
+
+**Key Learnings:**
+- **Tool call detection:** Check `finish_reason == "tool_calls"` or `message.tool_calls`
+- **Tool execution loop:** While tool calls exist → execute → add responses → continue
+- **Streaming challenge:** Can't get complete tool call data from stream, need non-streaming call
+- **Response type handling:** Stream vs ChatCompletion - need to check type before accessing
+
+**Pattern:** Manual implementation teaches you what SDKs abstract away
+
+---
+
+### Streaming + Tool Calls
+
+**Problem:** Streaming provides better UX, but tool calls require complete data
+
+**Solution:** Hybrid approach - stream when possible, switch to non-streaming for tools
+
+**The Challenge:**
+- Streaming API doesn't provide complete tool call data incrementally
+- Need full tool call info (function name, arguments, ID) to execute
+- Can't execute tools from partial stream data
+
+**Solution Pattern:**
+1. Try streaming first
+2. Detect tool calls in stream (check `chunk.choices[0].delta.tool_calls`)
+3. Track `finish_reason` from stream chunks (last chunk has it)
+4. If tool calls detected → switch to non-streaming → get full tool data
+5. Execute tools → add responses to conversation
+6. Resume streaming for final response
+
+**Key Implementation Details:**
+```python
+# Track finish_reason from stream chunks (not from Stream object)
+finish_reason = None
+for chunk in response:
+    if chunk.choices[0].finish_reason:
+        finish_reason = chunk.choices[0].finish_reason  # Last chunk has finish_reason
+
+# Check response type before accessing (Stream vs ChatCompletion)
+try:
+    if hasattr(response, 'choices') and response.choices:
+        final_content = response.choices[0].message.content
+except (AttributeError, TypeError):
+    # Response is a Stream or already consumed
+    pass
+```
+
+**Pattern:** Hybrid streaming (stream → detect tools → non-stream → execute → stream again)
+
+**Tradeoff:**
+- **Pure streaming:** Better UX, but can't handle tool calls
+- **Hybrid approach:** Best of both worlds, but more complex logic
+
+---
+
+### Session Management
+
+**Problem:** Each user/browser needs separate conversation history
+
+**Solution:** Generate unique session_id per user, filter database by session_id
+
+**Session ID Generation:**
+```python
+def chat_wrapper(message, history, request: gr.Request = None):
+    try:
+        if request and hasattr(request, 'headers') and request.headers:
+            user_agent = request.headers.get('user-agent', '')
+            session_id = f"session_{hash(user_agent) % 1000000}"
+        else:
+            session_id = f"session_{uuid.uuid4().hex[:8]}"
+    except Exception:
+        session_id = f"session_{uuid.uuid4().hex[:8]}"
+    
+    for response in chat(message, history, session_id):
+        yield response
+```
+
+**Key Points:**
+- Use `gr.Request` to get user-specific information
+- Hash user-agent for consistent session ID per browser
+- Fallback to UUID if request unavailable
+- Filter database queries by session_id
+
+**Pattern:** Session management = unique ID per user + database filtering by session_id
+
+**Tradeoff:**
+- **Request-based:** More accurate, but requires Gradio request object
+- **UUID fallback:** Always works, but new ID each time (no persistence)
+
+---
+
+### Error Handling for Tool Execution
+
+**Problem:** Tools can fail in many ways (invalid JSON, wrong arguments, runtime errors)
+
+**Solution:** Comprehensive error handling at each failure point
+
+**Error Handling Pattern:**
+```python
+def handle_tool_calls(message) -> List[Dict[str, Any]]:
+    responses = []
+    
+    for tool_call in message.tool_calls:
+        function_name = tool_call.function.name
+        
+        try:
+            arguments = json.loads(tool_call.function.arguments)
+        except json.JSONDecodeError as e:
+            responses.append({
+                "role": "tool",
+                "content": f"Error: Invalid tool arguments JSON. {str(e)}",
+                "tool_call_id": tool_call.id
+            })
+            continue
+        
+        if function_name in TOOL_REGISTRY:
+            func = TOOL_REGISTRY[function_name]
+            try:
+                result = func(**arguments)
+                responses.append({
+                    "role": "tool",
+                    "content": result,
+                    "tool_call_id": tool_call.id
+                })
+            except TypeError as e:
+                # Wrong number of arguments or wrong argument names
+                responses.append({
+                    "role": "tool",
+                    "content": f"Error: Function {function_name} received invalid arguments. {str(e)}",
+                    "tool_call_id": tool_call.id
+                })
+            except Exception as e:
+                # Any other error from the function itself
+                responses.append({
+                    "role": "tool",
+                    "content": f"Error executing {function_name}: {str(e)}",
+                    "tool_call_id": tool_call.id
+                })
+        else:
+            responses.append({
+                "role": "tool",
+                "content": f"Error: Unknown tool '{function_name}'",
+                "tool_call_id": tool_call.id
+            })
+    
+    return responses
+```
+
+**Error Types Handled:**
+- **JSON parsing errors:** Invalid JSON in tool arguments
+- **Type errors:** Wrong number/type of arguments
+- **General exceptions:** Runtime errors in tool functions
+- **Unknown tools:** Tool not found in registry
+
+**Pattern:** Comprehensive error handling = try/except at each failure point + informative error messages
+
+**Tradeoff:**
+- **Comprehensive handling:** Robust, but more code
+- **Minimal handling:** Simpler, but fails ungracefully
+
+---
+
+### Tool Calling Patterns
+
+**Tool Definition Pattern:**
+```python
+# Define tool function
+def get_ticket_price(destination_city: str) -> str:
+    # ... implementation ...
+    return f"Ticket price to {city} is ${price:.2f}"
+
+# Define tool schema
+tool_definition = {
+    "name": "get_ticket_price",
+    "description": "Get the price of a return ticket to a destination city.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "destination_city": {
+                "type": "string",
+                "description": "The city that the customer wants to travel to"
+            }
+        },
+        "required": ["destination_city"],
+        "additionalProperties": False
+    }
+}
+
+# Register in tools list
+tools = [{"type": "function", "function": tool_definition}]
+```
+
+**Function Registry Pattern:**
+```python
+TOOL_REGISTRY: Dict[str, Callable] = {
+    "get_ticket_price": get_ticket_price,
+    "set_ticket_price": set_ticket_price,
+}
+
+def handle_tool_calls(message) -> List[Dict[str, Any]]:
+    responses = []
+    for tool_call in message.tool_calls:
+        function_name = tool_call.function.name
+        arguments = json.loads(tool_call.function.arguments)
+        
+        func = TOOL_REGISTRY[function_name]
+        result = func(**arguments)
+        
+        responses.append({
+            "role": "tool",
+            "content": result,
+            "tool_call_id": tool_call.id
+        })
+    return responses
+```
+
+**SQLite Conversation History Pattern:**
+```python
+# Save message
+def save_message(session_id: str, role: str, content: str, tool_calls: Optional[str] = None):
+    with sqlite3.connect(DB_CONVERSATIONS) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            'INSERT INTO conversations (session_id, role, content, tool_calls) VALUES (?, ?, ?, ?)',
+            (session_id, role, content, tool_calls)
+        )
+        conn.commit()
+
+# Load conversation
+def load_conversation(session_id: str) -> List[Dict[str, Any]]:
+    with sqlite3.connect(DB_CONVERSATIONS) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            'SELECT role, content, tool_calls FROM conversations WHERE session_id = ? ORDER BY id',
+            (session_id,)
+        )
+        rows = cursor.fetchall()
+        
+        messages = []
+        for role, content, tool_calls_json in rows:
+            msg = {"role": role, "content": content or ""}
+            if role == "assistant" and tool_calls_json:
+                msg["tool_calls"] = json.loads(tool_calls_json)
+            elif role == "tool" and tool_calls_json:
+                msg["tool_call_id"] = tool_calls_json
+            messages.append(msg)
+        return messages
+```
+
+**Hybrid Streaming Pattern:**
+```python
+# Try streaming first
+response = openai.chat.completions.create(..., stream=True)
+
+# Detect tool calls
+tool_calls_detected = False
+finish_reason = None
+for chunk in response:
+    if chunk.choices[0].delta.tool_calls:
+        tool_calls_detected = True
+    if chunk.choices[0].finish_reason:
+        finish_reason = chunk.choices[0].finish_reason
+
+# Switch to non-streaming if tools detected
+if tool_calls_detected or finish_reason == "tool_calls":
+    response = openai.chat.completions.create(..., stream=False)
+    # Handle tool calls...
+    # Resume streaming after tools executed
+```
+
 ## Questions to Explore Further
 
 - [ ] How to implement automatic model selection based on task?

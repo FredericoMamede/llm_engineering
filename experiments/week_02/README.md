@@ -249,6 +249,118 @@ This is a **learning lab**, not a portfolio project. Experiments here are:
 - **Base + extension:** Keep base system message, extend conditionally
 - Pattern: Start with base system message, extend dynamically based on conversation needs
 
+## Day 4: Tool Calling / Function Calling
+
+### What I'm Testing
+
+#### 1. Tool Calling Fundamentals (`week2/day4.ipynb`)
+**What:** Implement function calling where LLM can call Python functions as tools
+
+**Why:**
+- Understand how LLMs can interact with external systems
+- Learn the mechanics of tool calling (not just using SDKs)
+- Build production-ready patterns for tool execution
+- Practice error handling for tool calls
+
+**What I learned:**
+- **Tool definition format:** JSON schema describing function name, description, parameters
+- **Tool call flow:** LLM decides to call tool → returns tool_calls → execute function → return result → LLM continues
+- **Message types:** `assistant` (with tool_calls), `tool` (with tool_call_id), `user`, `system`
+- **Tool response format:** Must include `role: "tool"`, `content: result`, `tool_call_id: id`
+- Pattern: Tools enable LLMs to interact with databases, APIs, and external systems
+
+#### 2. Function Registry Pattern (`week2/day4.ipynb`)
+**What:** Use dictionary-based registry instead of if/elif chains for tool routing
+
+**Why:**
+- Eliminate if/elif chains that don't scale
+- Make adding new tools trivial (just add to dictionary)
+- Cleaner, more maintainable code
+- Industry-standard pattern for extensible systems
+
+**What I learned:**
+- **Registry structure:** `TOOL_REGISTRY = {"tool_name": function_object}`
+- **Dynamic lookup:** `func = TOOL_REGISTRY[function_name]; result = func(**arguments)`
+- **Scales beautifully:** Adding new tool = one line in registry + function definition
+- **No if statements:** Dictionary lookup replaces conditional chains
+- Pattern: Function registry > if/elif chains for tool routing
+
+#### 3. SQLite for Conversation History (`week2/day4.ipynb`)
+**What:** Store conversation history in SQLite instead of relying on Gradio's in-memory history
+
+**Why:**
+- Gradio's history is ephemeral (lost on restart)
+- Need persistent storage for production applications
+- SQLite enables querying, analysis, and persistence
+- Real-world applications need database-backed history
+
+**What I learned:**
+- **Database schema:** Store `session_id`, `role`, `content`, `tool_calls`, `timestamp`
+- **Tool calls storage:** Store as JSON string for assistant messages, tool_call_id for tool messages
+- **History reconstruction:** Load from DB, parse tool_calls JSON, reconstruct full conversation
+- **Session management:** Use session_id to separate conversations per user/browser
+- Pattern: SQLite for conversation history > in-memory storage for production apps
+
+#### 4. Manual Tool Calling Implementation (`week2/day4.ipynb`)
+**What:** Implement tool calling manually without SDKs to understand the mechanics
+
+**Why:**
+- Understand what happens under the hood
+- Learn the complete flow: tool detection → execution → response → continuation
+- Practice handling edge cases (multiple tools, errors, streaming)
+- Build foundation for understanding agent frameworks
+
+**What I learned:**
+- **Tool call detection:** Check `finish_reason == "tool_calls"` or `message.tool_calls`
+- **Tool execution loop:** While tool calls exist → execute → add responses → continue conversation
+- **Error handling:** JSON parsing errors, TypeError (wrong args), general exceptions
+- **Tool response format:** Must match OpenAI's expected format with tool_call_id
+- Pattern: Manual implementation teaches you what SDKs abstract away
+
+#### 5. Streaming + Tool Calls (`week2/day4.ipynb`)
+**What:** Combine streaming responses with tool calling (complex but necessary)
+
+**Why:**
+- Streaming provides better UX (see responses as they generate)
+- Tool calls require complete data (can't stream tool call info incrementally)
+- Need hybrid approach: stream when possible, switch to non-streaming for tools
+
+**What I learned:**
+- **The challenge:** Streaming API doesn't provide complete tool call data incrementally
+- **Solution:** Detect tool calls in stream → switch to non-streaming → get full tool data → execute → resume streaming
+- **finish_reason tracking:** Track from stream chunks (last chunk has finish_reason)
+- **Response type handling:** Stream vs ChatCompletion - need to check type before accessing attributes
+- Pattern: Hybrid streaming (stream → detect tools → non-stream → execute → stream again)
+
+#### 6. Session Management (`week2/day4.ipynb`)
+**What:** Implement proper session management for multi-user conversations
+
+**Why:**
+- Each user/browser needs separate conversation history
+- Gradio's request object provides session information
+- Production apps need proper session isolation
+
+**What I learned:**
+- **Session ID generation:** Use `gr.Request` to get user-agent, hash it for unique ID
+- **Fallback handling:** If request unavailable, generate UUID
+- **Session isolation:** Each session_id gets its own conversation thread in database
+- Pattern: Session management = unique ID per user + database filtering by session_id
+
+#### 7. Error Handling for Tool Execution (`week2/day4.ipynb`)
+**What:** Comprehensive error handling for tool calls (JSON parsing, invalid args, exceptions)
+
+**Why:**
+- Tools can fail in many ways (invalid JSON, wrong arguments, runtime errors)
+- Need graceful error handling that returns useful messages to LLM
+- Production apps must handle all edge cases
+
+**What I learned:**
+- **JSON parsing errors:** Catch `JSONDecodeError`, return error message to LLM
+- **Type errors:** Catch `TypeError` (wrong number/type of arguments)
+- **General exceptions:** Catch all exceptions, return descriptive error
+- **Error format:** Return errors as tool responses so LLM can handle them
+- Pattern: Comprehensive error handling = try/except at each failure point + informative error messages
+
 ## Notebooks
 
 1. `00_multi_provider_setup.ipynb` - Setting up multiple API providers
@@ -258,8 +370,10 @@ This is a **learning lab**, not a portfolio project. Experiments here are:
 5. `04_prompt_caching.ipynb` - Prompt caching cost optimization
 6. `05_model_comparison.ipynb` - Comparing different models on same tasks
 7. `06_multi_model_conversations.ipynb` - Multi-model conversation patterns
-8. `06_gradio_intro.ipynb` - Building simple UIs with Gradio (Day 2)
-9. `week2/day3.ipynb` - Conversational AI with ChatInterface (Day 3)
+8. `06_gradio_intro.ipynb` - Building simple UIs with Gradio (Day 2 & Day 3)
+9. `07_tool_calling.ipynb` - Tool Calling / Function Calling patterns (Day 4)
+10. `week2/day3.ipynb` - Conversational AI with ChatInterface (Day 3 - Course notebook)
+11. `week2/day4.ipynb` - Tool Calling / Function Calling with Airline Assistant (Day 4 - Course notebook)
 
 ## Mini Projects
 

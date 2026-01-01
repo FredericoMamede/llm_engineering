@@ -87,3 +87,56 @@ system_message_dynamic_base: |
 #     ]
 #     # ... API call ...
 
+# Tool Calling / Function Calling (Day 4)
+# System messages for tool-enabled assistants
+# Pattern: System message should mention available tools and when to use them
+
+system_message_with_tools: |
+  You are a helpful assistant for {business_name}.
+  {business_context}
+  
+  You have access to the following tools:
+  {tool_descriptions}
+  
+  Use these tools when appropriate to help the customer.
+  {behavior_guidelines}
+
+# Example: Airline Assistant
+system_message_airline_assistant: |
+  You are a helpful assistant for an Airline called FlightAI.
+  Give short, courteous answers, no more than 1 sentence.
+  Always be accurate. If you don't know the answer, say so.
+  You can get ticket prices and set ticket prices using the available tools.
+
+# Tool definition pattern (for reference)
+# tool_definition = {
+#     "name": "function_name",
+#     "description": "Clear description of what the function does and when to use it.",
+#     "parameters": {
+#         "type": "object",
+#         "properties": {
+#             "param_name": {
+#                 "type": "string",
+#                 "description": "Clear description of the parameter"
+#             }
+#         },
+#         "required": ["param_name"],
+#         "additionalProperties": False
+#     }
+# }
+
+# Tool execution pattern (for reference)
+# def handle_tool_calls(message) -> List[Dict[str, Any]]:
+#     responses = []
+#     for tool_call in message.tool_calls:
+#         function_name = tool_call.function.name
+#         arguments = json.loads(tool_call.function.arguments)
+#         func = TOOL_REGISTRY[function_name]
+#         result = func(**arguments)
+#         responses.append({
+#             "role": "tool",
+#             "content": result,
+#             "tool_call_id": tool_call.id
+#         })
+#     return responses
+
