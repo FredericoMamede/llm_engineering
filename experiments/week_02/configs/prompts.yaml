@@ -1,0 +1,89 @@
+# Prompt Templates for Week 2 Experiments
+# Learning Lab - Reusable prompt patterns
+
+# Zero-shot prompts
+zero_shot_summarize: |
+  Summarize the following text in 2-3 sentences:
+  
+  {text}
+
+zero_shot_extract: |
+  Extract the key points from the following text:
+  
+  {text}
+
+# Few-shot prompts
+few_shot_classify: |
+  Classify the sentiment of the following text as positive, negative, or neutral.
+  
+  Examples:
+  - "I love this product!" → positive
+  - "This is terrible." → negative
+  - "The weather is okay." → neutral
+  
+  Text: {text}
+  Sentiment:
+
+# Chain-of-thought prompts
+cot_reasoning: |
+  Solve the following problem step by step:
+  
+  Problem: {problem}
+  
+  Let's think through this:
+  1. First, I need to...
+  2. Then, I should...
+  3. Finally, the answer is...
+
+# Structured output prompts
+structured_extract: |
+  Extract information from the following text and return as JSON with these fields:
+  - title: string
+  - key_points: array of strings
+  - sentiment: string (positive/negative/neutral)
+  
+  Text: {text}
+
+# Conversational AI system messages (Day 3)
+# System messages define personality, context, and behavior for chatbots
+# Pattern: [system] + history + [user] in messages array
+
+system_message_basic: |
+  You are a helpful assistant.
+
+system_message_business: |
+  You are a helpful assistant in a {business_type}. You should try to gently encourage 
+  the customer to try items that are on sale. {product_info}
+  
+  For example, if the customer says '{example_query}', 
+  you could reply something like, '{example_response}'
+  
+  {additional_guidance}
+
+system_message_with_examples: |
+  You are a {role}. {context}
+  
+  Examples of good responses:
+  - User: "{example_input_1}" → Assistant: "{example_output_1}"
+  - User: "{example_input_2}" → Assistant: "{example_output_2}"
+  
+  {behavior_guidelines}
+
+system_message_dynamic_base: |
+  You are a helpful assistant in a clothes store. You should try to gently encourage 
+  the customer to try items that are on sale. Hats are 60% off, and most other items are 50% off.
+  
+  # Dynamic extension can be added based on user input:
+  # if 'keyword' in message.lower():
+  #     system_message += " Additional context for keyword..."
+
+# ChatInterface callback pattern (for reference)
+# def chat(message, history):
+#     history = [{"role": h["role"], "content": h["content"]} for h in history]
+#     messages = [
+#         {"role": "system", "content": system_message},
+#     ] + history + [
+#         {"role": "user", "content": message}
+#     ]
+#     # ... API call ...
+

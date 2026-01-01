@@ -250,7 +250,12 @@ conversation.append(f"GPT: {response}")
 **Key Concepts:**
 - **Interface creation:** `gr.Interface(fn=function, inputs=[...], outputs=[...])`
 - **Component types:** Textbox, Dropdown, Markdown, etc.
-- **Launch options:** `share=True` (public link), `inbrowser=True` (auto-open), `auth=("user", "pass")` (password)
+- **Component configuration:** `label`, `info`, `lines` parameters for customization
+- **Launch options:** 
+  - `share=True` (public link via HTTP tunneling - may be blocked by corporate firewalls/antivirus)
+  - `inbrowser=True` (auto-open browser)
+  - `auth=("user", "pass")` (password protection - use .env for production!)
+- **Flagging mode:** `flagging_mode="never"` disables the flag button (useful for demos)
 - **Examples:** Pre-populate UI with example inputs
 
 **Basic Pattern:**
@@ -269,6 +274,11 @@ gr.Interface(
     flagging_mode="never"
 ).launch()
 ```
+
+**Important Notes:**
+- **share=True warning:** Uses HTTP tunneling (like ngrok) - may be blocked by antivirus/corporate firewalls
+- **Dark mode:** Gradio respects user's browser/system preferences (recommended). Can force dark mode with `js` parameter, but not recommended for accessibility
+- **Authentication:** Use `.env` file for passwords in production, never hardcode!
 
 **Tradeoff:**
 - **Gradio:** Fast prototyping, simple, but limited customization
@@ -364,6 +374,193 @@ class BrochureGenerator:
 
 ---
 
+## Day 3: Conversational AI with Gradio ChatInterface
+
+### Gradio ChatInterface
+
+**Problem:** Need to build conversational AI chatbots with multi-turn conversation support
+
+**Solution:** Use Gradio's `ChatInterface` component - purpose-built for conversations
+
+**Key Concepts:**
+- **ChatInterface:** `gr.ChatInterface(fn=chat, type="messages")` - specialized for conversations
+- **Callback signature:** `chat(message, history)` - Gradio manages history automatically
+- **History format:** Gradio provides history as list of `{"role": "...", "content": "..."}` dicts
+- **Message conversion:** Must convert Gradio history to API format
+
+**Basic Pattern:**
+```python
+def chat(message, history):
+    # Convert Gradio history to API format
+    history = [{"role": h["role"], "content": h["content"]} for h in history]
+    
+    # Build messages: system + history + new user message
+    messages = [
+        {"role": "system", "content": system_message},
+    ] + history + [
+        {"role": "user", "content": message}
+    ]
+    
+    # Call API
+    response = openai.chat.completions.create(model=MODEL, messages=messages)
+    return response.choices[0].message.content
+
+# Launch ChatInterface
+gr.ChatInterface(fn=chat, type="messages").launch()
+```
+
+**Key Differences from Interface:**
+- **ChatInterface:** Purpose-built for conversations, manages history automatically
+- **Interface:** General-purpose, you manage state yourself
+- **History:** ChatInterface provides conversation history, Interface doesn't
+- **UI:** ChatInterface has chat-like UI, Interface is more flexible
+
+**Pattern:** Use ChatInterface for conversations, Interface for general I/O
+
+**Tradeoff:**
+- **ChatInterface:** Easier for conversations, but less flexible
+- **Interface:** More flexible, but you manage conversation state yourself
+
+---
+
+### System Messages for Context and Behavior
+
+**Problem:** Need to control chatbot personality, behavior, and business logic
+
+**Solution:** Use system messages to set context, personality, and constraints
+
+**How It Works:**
+- System message is first in messages array
+- Defines personality, role, and behavior
+- Can include examples (one-shot prompting)
+- Persists across entire conversation
+
+**Basic Pattern:**
+```python
+system_message = """You are a helpful assistant in a clothes store. 
+You should try to gently encourage the customer to try items that are on sale. 
+Hats are 60% off, and most other items are 50% off.
+
+For example, if the customer says 'I'm looking to buy a hat', 
+you could reply something like, 'Wonderful - we have lots of hats - including 
+several that are part of our sales event.'
+
+Encourage the customer to buy hats if they are unsure what to get."""
+
+def chat(message, history):
+    history = [{"role": h["role"], "content": h["content"]} for h in history]
+    messages = [
+        {"role": "system", "content": system_message},
+    ] + history + [
+        {"role": "user", "content": message}
+    ]
+    # ... API call ...
+```
+
+**One-Shot Prompting in System Messages:**
+- Include examples directly in system message
+- Model learns from examples without needing few-shot in each message
+- More efficient than repeating examples in every user message
+- Pattern: System message = instructions + examples + constraints
+
+**Business Applications:**
+- Product information (prices, availability, features)
+- Business rules (what to recommend, what to avoid)
+- Tone and personality (friendly, professional, encouraging)
+- Constraints (what not to sell, what to emphasize)
+
+**Pattern:**
+- System message = personality + context + examples + constraints
+- User/Assistant messages = actual conversation history
+- System message persists, conversation history grows
+
+---
+
+### Streaming in ChatInterface
+
+**Problem:** Want real-time streaming in conversational interfaces
+
+**Solution:** Use generator pattern with `yield` - same as regular Interface
+
+**How It Works:**
+```python
+def chat(message, history):
+    history = [{"role": h["role"], "content": h["content"]} for h in history]
+    messages = [
+        {"role": "system", "content": system_message},
+    ] + history + [
+        {"role": "user", "content": message}
+    ]
+    
+    # Enable streaming
+    stream = openai.chat.completions.create(
+        model=MODEL, 
+        messages=messages, 
+        stream=True
+    )
+    
+    # Accumulate and yield
+    response = ""
+    for chunk in stream:
+        response += chunk.choices[0].delta.content or ''
+        yield response  # Yield accumulated result (not return!)
+```
+
+**Key Points:**
+- **Same pattern:** Generator with `yield` works in ChatInterface too
+- **Auto-detection:** Gradio automatically detects generator functions
+- **Incremental updates:** UI updates as each chunk arrives
+- **Better UX:** Users see responses as they generate, feels more natural
+
+**Pattern:** Use `yield` for streaming, `return` for one-shot responses
+
+---
+
+### Dynamic System Message Modification
+
+**Problem:** Need to adapt system message based on user input or conversation state
+
+**Solution:** Conditionally modify system message before API call
+
+**Pattern:**
+```python
+def chat(message, history):
+    history = [{"role": h["role"], "content": h["content"]} for h in history]
+    
+    # Start with base system message
+    relevant_system_message = system_message
+    
+    # Modify based on user input
+    if 'belt' in message.lower():
+        relevant_system_message += " The store does not sell belts; if you are asked for belts, be sure to point out other items on sale."
+    
+    # Build messages with modified system message
+    messages = [
+        {"role": "system", "content": relevant_system_message},
+    ] + history + [
+        {"role": "user", "content": message}
+    ]
+    
+    # ... API call ...
+```
+
+**Use Cases:**
+- **Keyword detection:** Add context when specific topics mentioned
+- **Edge cases:** Handle special cases dynamically
+- **Contextual rules:** Add rules based on conversation flow
+- **Adaptive behavior:** Change behavior based on user needs
+
+**Pattern:**
+- Base system message = core personality and rules
+- Dynamic extension = additional context when needed
+- Check user message or conversation state before modifying
+
+**Tradeoff:**
+- **Static system message:** Simpler, but less flexible
+- **Dynamic modification:** More flexible, but more complex logic
+
+---
+
 ## Key Learnings
 
 ### Multi-Provider APIs
@@ -395,6 +592,13 @@ class BrochureGenerator:
 - Streaming requires generator pattern (`yield` not `return`)
 - Class-based design with model registry simplifies multi-model UIs
 - Pattern: Use Gradio for fast prototyping, custom web for production
+
+### Conversational AI with ChatInterface
+- ChatInterface is purpose-built for multi-turn conversations
+- System messages control personality, context, and behavior
+- History management: Convert Gradio history to API format
+- Dynamic system message modification enables adaptive behavior
+- Pattern: System message = personality + context, History = conversation
 
 ## Tradeoffs Observed
 
@@ -500,6 +704,54 @@ class LLMGenerator:
             yield result
 ```
 
+### Gradio ChatInterface Pattern
+```python
+# Pattern: Conversational AI with ChatInterface
+def chat(message, history):
+    # Convert Gradio history to API format
+    history = [{"role": h["role"], "content": h["content"]} for h in history]
+    
+    # Build messages: system + history + new user message
+    messages = [
+        {"role": "system", "content": system_message},
+    ] + history + [
+        {"role": "user", "content": message}
+    ]
+    
+    # Streaming response
+    stream = client.chat.completions.create(model=model, messages=messages, stream=True)
+    response = ""
+    for chunk in stream:
+        response += chunk.choices[0].delta.content or ''
+        yield response
+
+# Launch ChatInterface
+gr.ChatInterface(fn=chat, type="messages").launch()
+```
+
+### Dynamic System Message Pattern
+```python
+# Pattern: Modify system message based on user input
+def chat(message, history):
+    history = [{"role": h["role"], "content": h["content"]} for h in history]
+    
+    # Base system message
+    relevant_system_message = system_message
+    
+    # Dynamic modification based on keywords
+    if 'keyword' in message.lower():
+        relevant_system_message += " Additional context for keyword..."
+    
+    # Build messages with modified system message
+    messages = [
+        {"role": "system", "content": relevant_system_message},
+    ] + history + [
+        {"role": "user", "content": message}
+    ]
+    
+    # ... API call ...
+```
+
 ## Questions to Explore Further
 
 - [ ] How to implement automatic model selection based on task?
@@ -508,6 +760,9 @@ class LLMGenerator:
 - [ ] What's the best way to manage conversation history for very long conversations?
 - [ ] How to implement fallback strategies (local → cloud)?
 - [ ] What are the best practices for multi-agent systems?
+- [ ] How to implement conversation memory/context window management?
+- [ ] What's the best pattern for multi-turn conversation evaluation?
+- [ ] How to handle conversation state persistence across sessions?
 
 ## References
 

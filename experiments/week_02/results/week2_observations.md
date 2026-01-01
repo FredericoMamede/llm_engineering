@@ -90,3 +90,77 @@
 - Easy to add new models (just update dictionary)
 
 **Pattern:** Class with model registry > separate functions per model
+
+## Day 3: Conversational AI with ChatInterface
+
+### Gradio ChatInterface
+
+**Finding:** ChatInterface is purpose-built for conversations, much easier than managing state manually
+- **Specialized component:** `gr.ChatInterface(fn=chat, type="messages")` handles conversation UI
+- **Automatic history:** Gradio manages conversation history, provides it to callback function
+- **Callback signature:** `chat(message, history)` - simple and clean
+- **History format:** Gradio provides history as list of `{"role": "...", "content": "..."}` dicts
+
+**Key Differences:**
+- **ChatInterface:** Purpose-built for conversations, manages history automatically
+- **Interface:** General-purpose, you manage state yourself
+- **Pattern:** Use ChatInterface for conversations, Interface for general I/O
+
+**Tradeoff:** 
+- ChatInterface: Easier for conversations, but less flexible
+- Interface: More flexible, but you manage conversation state yourself
+
+### System Messages for Context and Behavior
+
+**Finding:** System messages are powerful for controlling chatbot personality and business logic
+- **Placement:** Always first in messages array: `[system] + history + [user]`
+- **One-shot prompting:** Include examples in system message to guide behavior
+- **Business context:** Perfect for business rules, product info, constraints, tone
+- **Persistence:** System message persists across entire conversation
+
+**Pattern:**
+- System message = personality + context + examples + constraints
+- User/Assistant messages = actual conversation history
+- System message defines "who" the chatbot is, history defines "what" was said
+
+**Business Applications:**
+- Product information (prices, availability, features)
+- Business rules (what to recommend, what to avoid)
+- Tone and personality (friendly, professional, encouraging)
+- Constraints (what not to sell, what to emphasize)
+
+### Streaming in ChatInterface
+
+**Finding:** Same generator pattern works seamlessly in ChatInterface
+- **Generator pattern:** Use `yield` not `return` - same as regular Interface
+- **Auto-detection:** Gradio automatically detects generator functions
+- **Better UX:** Users see responses as they generate, feels more natural in conversations
+
+**Pattern:**
+- Accumulate response in loop
+- Yield after each chunk
+- UI updates incrementally
+
+### Dynamic System Message Modification
+
+**Finding:** Conditionally modifying system message enables adaptive behavior
+- **Base + extension:** Start with base system message, extend conditionally
+- **Keyword detection:** Check user message for keywords, append context if needed
+- **Edge cases:** Handle special cases dynamically without cluttering base message
+
+**Pattern:**
+```python
+relevant_system_message = system_message  # Base
+if 'keyword' in message.lower():
+    relevant_system_message += " Additional context..."  # Extension
+```
+
+**Use Cases:**
+- Keyword detection (add context when specific topics mentioned)
+- Edge cases (handle special cases dynamically)
+- Contextual rules (add rules based on conversation flow)
+- Adaptive behavior (change behavior based on user needs)
+
+**Tradeoff:**
+- **Static system message:** Simpler, but less flexible
+- **Dynamic modification:** More flexible, but more complex logic

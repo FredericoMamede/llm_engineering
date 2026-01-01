@@ -184,6 +184,71 @@ This is a **learning lab**, not a portfolio project. Experiments here are:
 - **Examples:** Pre-populate UI with example inputs
 - Pattern: Choose component based on data type and user interaction needs
 
+## Day 3: Conversational AI with Gradio ChatInterface
+
+### What I'm Testing
+
+#### 1. Gradio ChatInterface (`week2/day3.ipynb`)
+**What:** Build conversational AI chatbots using Gradio's ChatInterface component
+
+**Why:**
+- ChatInterface is specifically designed for multi-turn conversations
+- Learn how to manage conversation history in UI applications
+- Understand system message patterns for behavior control
+- Practice dynamic prompt modification based on user input
+
+**What I learned:**
+- **ChatInterface vs Interface:** `gr.ChatInterface(fn=chat, type="messages")` is purpose-built for conversations
+- **Callback signature:** `chat(message, history)` - Gradio automatically manages history
+- **History format:** Gradio provides history as list of `{"role": "...", "content": "..."}` dicts
+- **Message structure:** Must convert Gradio history to API format: `[system] + history + [user_message]`
+- Pattern: ChatInterface handles UI complexity, you just manage the conversation logic
+
+#### 2. System Messages for Context and Behavior (`week2/day3.ipynb`)
+**What:** Use system messages to control chatbot personality and behavior
+
+**Why:**
+- System messages set the tone and context for entire conversation
+- Enable one-shot prompting (examples in system message)
+- Control business logic and constraints
+- Define role and personality without cluttering user messages
+
+**What I learned:**
+- **System message placement:** Always first in messages array: `[system] + history + [user]`
+- **One-shot prompting:** Include examples in system message to guide behavior
+- **Business context:** System messages perfect for business rules, product info, constraints
+- **Dynamic modification:** Can modify system message based on user input (e.g., detect keywords)
+- Pattern: System message = personality + context + examples, User/Assistant = conversation history
+
+#### 3. Streaming in ChatInterface (`week2/day3.ipynb`)
+**What:** Implement streaming responses in conversational interfaces
+
+**Why:**
+- Better UX in conversations (see responses as they generate)
+- Same generator pattern works in ChatInterface
+- Real-time feedback feels more natural in chat
+
+**What I learned:**
+- **Generator pattern:** Same as regular Interface - use `yield` not `return`
+- **Streaming structure:** `for chunk in stream: yield accumulated_response`
+- **ChatInterface compatibility:** Works seamlessly with generator functions
+- Pattern: Streaming in ChatInterface uses same generator pattern as regular Interface
+
+#### 4. Dynamic System Message Modification (`week2/day3.ipynb`)
+**What:** Modify system message based on user input or conversation state
+
+**Why:**
+- Handle edge cases dynamically
+- Add context when needed
+- Adapt behavior based on user requests
+- Maintain flexibility while keeping base system message
+
+**What I learned:**
+- **Keyword detection:** Check user message for keywords, append to system message if needed
+- **Conditional logic:** `if 'keyword' in message.lower(): system_message += "..."` 
+- **Base + extension:** Keep base system message, extend conditionally
+- Pattern: Start with base system message, extend dynamically based on conversation needs
+
 ## Notebooks
 
 1. `00_multi_provider_setup.ipynb` - Setting up multiple API providers
@@ -194,6 +259,7 @@ This is a **learning lab**, not a portfolio project. Experiments here are:
 6. `05_model_comparison.ipynb` - Comparing different models on same tasks
 7. `06_multi_model_conversations.ipynb` - Multi-model conversation patterns
 8. `06_gradio_intro.ipynb` - Building simple UIs with Gradio (Day 2)
+9. `week2/day3.ipynb` - Conversational AI with ChatInterface (Day 3)
 
 ## Mini Projects
 
