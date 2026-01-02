@@ -1312,6 +1312,462 @@ if tool_calls_detected or finish_reason == "tool_calls":
     # Resume streaming after tools executed
 ```
 
+## Day 5: Multi-Modal AI & Enhanced Tool Calling
+
+### Multi-Modal AI Responses
+
+**Problem:** Many applications need more than text responses (images, audio)
+
+**Solution:** Combine text responses with DALL-E-3 image generation and TTS audio
+
+**DALL-E-3 Integration:**
+```python
+def artist(city):
+    image_response = openai.images.generate(
+        model="dall-e-3",
+        prompt=f"An image representing a vacation in {city}",
+        size="1024x1024",
+        n=1,
+        response_format="b64_json"
+    )
+    image_base64 = image_response.data[0].b64_json
+    image_data = base64.b64decode(image_base64)
+    return Image.open(BytesIO(image_data))
+```
+
+**TTS Integration:**
+```python
+def talker(message):
+    response = openai.audio.speech.create(
+        model="tts-1",
+        voice="alloy",  # Options: alloy, echo, fable, onyx, nova, shimmer
+        input=message
+    )
+    audio_path = "output.mp3"
+    response.stream_to_file(audio_path)
+    return audio_path
+```
+
+**Key Points:**
+- **Image format:** Use `response_format="b64_json"` for base64 encoded images
+- **Audio format:** Response is streamable audio file (mp3)
+- **Combining with tools:** Can call image/audio generation as tool result
+- **Size options:** DALL-E supports 1024x1024, 1792x1024, 1024x1792
+
+**Pattern:** Multi-modal = multiple API calls + proper handling of each modality
+
+**Tradeoff:**
+- **Multi-modal:** Richer UX, but more API calls and cost
+- **Text-only:** Simpler, cheaper, but less engaging
+
+---
+
+### Enhanced Flight Booking System (My Extension)
+
+**Problem:** Simple booking systems don't match real-world UX
+
+**Solution:** Implement realistic two-step booking with complete flight details
+
+**Key Features Implemented:**
+- **Two-step flow:** Quote → Confirm (never charge without showing price)
+- **Flight times:** 5 scheduled departure times (6AM, 10AM, 2PM, 6PM, 9PM)
+- **Class selection:** Economy (1x), Business (2.5x), First Class (4x)
+- **Price breakdown:** Base fare × passengers × class multiplier + taxes
+- **Email confirmation:** Simulated email showing booking details
+- **Multiple passengers:** Support 1-9 passengers
+- **Round trip/one-way:** Optional return date
+- **Cancellation:** Cancel with simulated refund
+
+**Configuration Pattern:**
+```python
+# Flight times configuration
+FLIGHT_TIMES = {
+    "morning": "06:00 AM",
+    "mid-morning": "10:00 AM",
+    "afternoon": "02:00 PM",
+    "evening": "06:00 PM",
+    "night": "09:00 PM"
+}
+
+# Class multipliers
+CLASS_MULTIPLIERS = {
+    "economy": 1.0,
+    "business": 2.5,
+    "first": 4.0
+}
+
+# Tax rate
+TAX_RATE = 0.12
+```
+
+**Why Two-Step Flow:**
+- Real booking systems NEVER complete transactions without showing price
+- Prevents accidental bookings
+- Matches industry-standard UX
+- Allows user to review before committing
+- Mirrors real payment flows (show total → confirm → charge)
+
+**Pattern:** Quote → Confirm separates "show price" from "finalize transaction"
+
+---
+
+### Handling LLM Training Data Cutoff
+
+**Problem:** LLMs are trained on data up to a specific date, can't assume current dates
+
+**Solution:** Parse and validate dates in code, not relying on LLM assumptions
+
+**Date Parsing with dateutil:**
+```python
+from dateutil import parser
+
+def parse_date(date_str):
+    """Parse various date formats into YYYY-MM-DD format.
+    
+    Why we need this: LLMs are trained on data up to a certain cutoff date.
+    Users need to book flights for future dates (2025, 2026, etc.), so we must 
+    parse and validate dates beyond the training cutoff.
+    """
+    try:
+        parsed_date = parser.parse(date_str)
+        return parsed_date.strftime("%Y-%m-%d")
+    except:
+        return date_str  # Let validation catch invalid dates
+```
+
+**Future Date Validation:**
+```python
+def validate_date(date_str, must_be_future=True):
+    """Validate a date string and optionally check if it's in the future."""
+    try:
+        parsed = parse_date(date_str)
+        date_obj = datetime.strptime(parsed, "%Y-%m-%d").date()
+        
+        if must_be_future and date_obj < datetime.now().date():
+            return False, f"Date {parsed} must be in the future. Today is {datetime.now().date()}"
+        
+        return True, parsed
+    except Exception as e:
+        return False, f"Invalid date format: {date_str}"
+```
+
+**Key Points:**
+- **Flexible parsing:** dateutil handles "June 15, 2025", "2025-06-15", "next month", etc.
+- **Future validation:** Compare against real `datetime.now()`, not LLM assumptions
+- **Standard format:** Convert all dates to `YYYY-MM-DD` internally
+- **Clear errors:** Return helpful error messages for invalid dates
+
+**Pattern:** Parse dates in code, validate against real time, don't trust LLM date assumptions
+
+**Why This Matters:**
+- LLM might default to dates from training data
+- Users need to book for future dates beyond training cutoff
+- Real applications must work with actual current dates
+- Date validation is a code responsibility, not LLM responsibility
+
+---
+
+### Complex Tool Definitions
+
+**Problem:** Real-world tools have many parameters (10+)
+
+**Solution:** Define comprehensive tool schemas with required and optional parameters
+
+**Example: Flight Quote Tool (10+ parameters):**
+```python
+quote_function = {
+    "name": "get_flight_quote",
+    "description": """Generate a detailed flight quote with price breakdown. 
+    IMPORTANT: Only call this when you have ALL required information.""",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "passenger_name": {
+                "type": "string",
+                "description": "Full name of the primary passenger"
+            },
+            "email": {
+                "type": "string",
+                "description": "Email address for booking confirmation"
+            },
+            "origin_city": {
+                "type": "string",
+                "description": "City where the flight departs from"
+            },
+            "destination_city": {
+                "type": "string",
+                "description": "City where the flight arrives"
+            },
+            "departure_date": {
+                "type": "string",
+                "description": "Departure date (e.g., '2025-06-15', 'June 15, 2025')"
+            },
+            "departure_time": {
+                "type": "string",
+                "description": "Preferred departure time: 'morning' (6AM), 'mid-morning' (10AM), etc."
+            },
+            "flight_class": {
+                "type": "string",
+                "description": "Class of travel: 'economy', 'business', or 'first'"
+            },
+            "num_passengers": {
+                "type": "integer",
+                "description": "Number of passengers (1-9)"
+            },
+            "return_date": {
+                "type": "string",
+                "description": "Return date for round trips (optional)"
+            },
+            "return_time": {
+                "type": "string",
+                "description": "Preferred return flight time (optional)"
+            },
+            "phone": {
+                "type": "string",
+                "description": "Phone number (optional)"
+            }
+        },
+        "required": ["passenger_name", "email", "origin_city", "destination_city", 
+                    "departure_date", "departure_time", "flight_class", "num_passengers"],
+        "additionalProperties": False
+    }
+}
+```
+
+**Key Points:**
+- **Required vs optional:** Separate required parameters from optional ones
+- **Clear descriptions:** LLM uses descriptions to understand what to ask user
+- **Type hints:** Use proper JSON schema types (string, integer, etc.)
+- **Validation in function:** Tool function validates all inputs before processing
+
+**Pattern:** Comprehensive tool definitions guide LLM to collect all required information
+
+---
+
+### Quote → Confirm Workflow Pattern
+
+**Problem:** Single-step bookings can lead to accidental transactions
+
+**Solution:** Separate quote generation from booking confirmation
+
+**Quote Function:**
+```python
+def get_flight_quote(...) -> str:
+    """Generate quote with price breakdown, save to database, return quote_id."""
+    
+    # Validate all inputs
+    # Calculate pricing
+    base_fare_total = base_fare_per_person * num_passengers
+    subtotal = base_fare_total * class_multiplier
+    taxes = subtotal * TAX_RATE
+    total_price = subtotal + taxes
+    
+    # Generate quote ID
+    quote_id = f"QT-{uuid.uuid4().hex[:8].upper()}"
+    
+    # Save quote to database (status='pending')
+    # Return formatted quote with price breakdown and quote_id
+    return quote_with_price_breakdown
+```
+
+**Confirm Function:**
+```python
+def confirm_booking(quote_id: str) -> str:
+    """Confirm booking from quote, create booking record, return booking_id."""
+    
+    # Lookup quote by ID
+    # Check quote status (must be 'pending')
+    # Create booking record
+    booking_id = f"FLT-{uuid.uuid4().hex[:8].upper()}"
+    
+    # Update quote status to 'confirmed'
+    # Generate email confirmation
+    return confirmation_with_booking_id
+```
+
+**Database Schema:**
+```sql
+-- Quotes table (pending transactions)
+CREATE TABLE quotes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    quote_id TEXT UNIQUE NOT NULL,
+    passenger_name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    -- ... all flight details ...
+    total_price REAL NOT NULL,
+    status TEXT DEFAULT 'pending',  -- pending, confirmed, expired
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    expires_at DATETIME
+)
+
+-- Bookings table (confirmed transactions)
+CREATE TABLE bookings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    booking_id TEXT UNIQUE NOT NULL,
+    quote_id TEXT NOT NULL,  -- Reference to original quote
+    -- ... all flight details ...
+    status TEXT DEFAULT 'confirmed',  -- confirmed, cancelled
+    confirmation_sent_at DATETIME
+)
+```
+
+**Pattern:** Quote → Confirm = two database tables (quotes, bookings) + status tracking
+
+---
+
+### Normalization Functions
+
+**Problem:** User input varies (e.g., "morning", "6 AM", "06:00")
+
+**Solution:** Normalize user input to standard values
+
+**Time Normalization:**
+```python
+def normalize_flight_time(time_str):
+    """Convert various time descriptions to our standard time slots."""
+    time_lower = time_str.lower().strip()
+    
+    # Direct matches
+    if time_lower in FLIGHT_TIMES:
+        return time_lower
+    
+    # Fuzzy matching
+    if "6" in time_lower and ("am" in time_lower or "morning" in time_lower):
+        return "morning"
+    elif "10" in time_lower or "mid" in time_lower:
+        return "mid-morning"
+    elif "2" in time_lower or "14" in time_lower or "afternoon" in time_lower:
+        return "afternoon"
+    elif "6" in time_lower and ("pm" in time_lower or "evening" in time_lower):
+        return "evening"
+    elif "9" in time_lower or "21" in time_lower or "night" in time_lower:
+        return "night"
+    
+    # Default
+    return "morning"
+```
+
+**Class Normalization:**
+```python
+def normalize_class(class_str):
+    """Convert various class descriptions to our standard classes."""
+    class_lower = class_str.lower().strip()
+    
+    if "first" in class_lower:
+        return "first"
+    elif "business" in class_lower:
+        return "business"
+    else:
+        return "economy"
+```
+
+**Pattern:** Normalization functions convert user input to standard internal values
+
+---
+
+### Email Confirmation Simulation
+
+**Problem:** Need to show email confirmations without actual email sending
+
+**Solution:** Generate formatted email content for display
+
+**Email Generator:**
+```python
+def generate_email_confirmation(booking):
+    """Generate a simulated email confirmation (what would be sent)."""
+    return f"""
+════════════════════════════════════════════════════════════════
+                    ✈️ FlightAI BOOKING CONFIRMATION
+════════════════════════════════════════════════════════════════
+
+Dear {booking['passenger_name']},
+
+Your flight has been successfully booked!
+
+📋 BOOKING REFERENCE: {booking['booking_id']}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FLIGHT DETAILS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Route:      {booking['origin_city']} → {booking['destination_city']}
+  Date:       {booking['departure_date']}
+  Time:       {booking['departure_time']}
+  Class:      {booking['flight_class'].title()}
+  Passengers: {booking['num_passengers']}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PRICE BREAKDOWN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Base Fare:  ${booking['base_fare']:.2f}
+  Class:      ×{booking['class_multiplier']}
+  Taxes:      ${booking['taxes']:.2f}
+  TOTAL:      ${booking['total_price']:.2f}
+
+This confirmation has been sent to: {booking['email']}
+════════════════════════════════════════════════════════════════
+"""
+```
+
+**Pattern:** Simulated email = formatted string showing what real email would contain
+
+---
+
+### Enhanced Tool Calling Patterns
+
+**Two-Step Transaction Pattern:**
+```python
+# Step 1: Quote (no commitment)
+quote_function = {
+    "name": "get_flight_quote",
+    "description": "Generate a quote. Only call when you have ALL information.",
+    # ... parameters ...
+}
+
+# Step 2: Confirm (finalize)
+confirm_function = {
+    "name": "confirm_booking",
+    "description": "Confirm booking from quote. Only call when customer confirms.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "quote_id": {
+                "type": "string",
+                "description": "The quote ID to confirm (format: QT-XXXXXXXX)"
+            }
+        },
+        "required": ["quote_id"],
+        "additionalProperties": False
+    }
+}
+```
+
+**Validation in Tool Functions:**
+```python
+def get_flight_quote(...):
+    # Validate all required fields
+    if not all([passenger_name, email, origin_city, destination_city, ...]):
+        return "ERROR: Missing required information."
+    
+    # Validate email format
+    if "@" not in email or "." not in email:
+        return f"ERROR: Invalid email format: {email}"
+    
+    # Validate origin != destination
+    if origin_city.lower() == destination_city.lower():
+        return "ERROR: Origin and destination cannot be the same."
+    
+    # Validate date
+    valid, result = validate_date(departure_date)
+    if not valid:
+        return f"ERROR: {result}"
+    
+    # ... proceed with quote generation ...
+```
+
+**Pattern:** Comprehensive validation in tool functions ensures data integrity
+
+---
+
 ## Questions to Explore Further
 
 - [ ] How to implement automatic model selection based on task?
@@ -1323,10 +1779,13 @@ if tool_calls_detected or finish_reason == "tool_calls":
 - [ ] How to implement conversation memory/context window management?
 - [ ] What's the best pattern for multi-turn conversation evaluation?
 - [ ] How to handle conversation state persistence across sessions?
+- [ ] How to implement actual email sending (SendGrid, AWS SES)?
+- [ ] What's the best pattern for payment processing with tool calling?
+- [ ] How to handle multi-modal responses in streaming?
 
 ## References
 
-- Course material: Week 2 Day 1 & Day 2 notebooks
+- Course material: Week 2 Day 1-5 notebooks
 - OpenAI API docs: https://platform.openai.com/docs
 - Anthropic API docs: https://docs.anthropic.com
 - LiteLLM docs: https://docs.litellm.ai
@@ -1334,5 +1793,8 @@ if tool_calls_detected or finish_reason == "tool_calls":
 - OpenRouter docs: https://openrouter.ai/docs
 - Ollama docs: https://ollama.ai/docs
 - Gradio docs: https://www.gradio.app/guides/quickstart
+- DALL-E API docs: https://platform.openai.com/docs/guides/images
+- TTS API docs: https://platform.openai.com/docs/guides/text-to-speech
+- dateutil docs: https://dateutil.readthedocs.io/
 
 

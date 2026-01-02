@@ -14,13 +14,23 @@ This is a **learning lab**, not a portfolio project. Experiments here are:
 
 ## Structure
 
-- `notebooks/` - Jupyter notebooks exploring specific concepts
-- `mini_projects/` - Complete mini-projects demonstrating Week 2 patterns
-- `datasets/` - Small example datasets for testing
-- `configs/` - Configuration files (prompts, models)
-- `scripts/` - Helper scripts for automation
-- `results/` - Summary observations and findings
-- `outputs/` - Generated artifacts (gitignored)
+```
+experiments/week_02/
+├── notebooks/
+│   ├── 01_multi_provider_setup.ipynb    # Day 1: Multi-provider API setup
+│   ├── 02_gradio_and_chat_interface.ipynb # Day 2-3: Gradio UI & ChatInterface
+│   └── 03_tool_calling.ipynb            # Day 4: Tool calling patterns
+├── configs/
+│   └── prompts.yaml                     # Reusable prompt templates
+├── results/
+│   └── week2_observations.md            # Findings and tradeoffs
+├── README.md                            # This file
+└── notes.md                             # Detailed patterns and code examples
+```
+
+**Note:** This structure was cleaned up to only include files with actual content.
+Previously had 7 stub notebooks that were never filled in - they were deleted to
+maintain a clean, honest structure where every file serves a purpose.
 
 ## Day 1: Frontier Model APIs
 
@@ -361,27 +371,121 @@ This is a **learning lab**, not a portfolio project. Experiments here are:
 - **Error format:** Return errors as tool responses so LLM can handle them
 - Pattern: Comprehensive error handling = try/except at each failure point + informative error messages
 
+## Day 5: Multi-Modal AI & Enhanced Tool Calling
+
+### What I'm Testing
+
+#### 1. Multi-Modal AI Responses (`week2/day5.ipynb`)
+**What:** Combine text responses with image generation (DALL-E-3) and audio (TTS)
+
+**Why:**
+- Many applications need multi-modal outputs (not just text)
+- Learn to integrate image generation into conversational flows
+- Understand multi-modal response patterns
+- Practice combining multiple AI capabilities
+
+**What I learned:**
+- **DALL-E-3 integration:** `openai.images.generate(model="dall-e-3", prompt=..., size="1024x1024")`
+- **TTS integration:** `openai.audio.speech.create(model="tts-1", voice="alloy", input=message)`
+- **Image handling:** Base64 encoding for display in UI: `Image.open(BytesIO(base64.b64decode(img_data)))`
+- **Audio handling:** Response is audio file, save and play with appropriate library
+- Pattern: Multi-modal = multiple API calls + proper handling of each modality
+
+#### 2. Enhanced Realistic Flight Booking System (`week2/day5.ipynb` - My Extension)
+**What:** Built a realistic booking system with two-step flow, price breakdown, and complete flight details
+
+**Why:**
+- Real booking systems never complete transactions without showing price first
+- Learn two-step transaction patterns (Quote → Confirm)
+- Practice complex tool definitions with many parameters
+- Understand date handling beyond LLM training cutoff
+- Build industry-standard UX patterns
+
+**What I learned:**
+- **Two-step booking flow:** Quote first (show price) → Confirm (finalize booking)
+- **Complex tool definitions:** Tools can have 10+ parameters, use required vs optional
+- **Date parsing:** Use `dateutil.parser` for flexible date formats (handles "June 15, 2025", "2025-06-15", etc.)
+- **Future date handling:** Must allow dates beyond LLM training cutoff - validate in code, not assumptions
+- **Price breakdown:** Base fare × passengers × class multiplier + taxes = total
+- **Email confirmation simulation:** Show what would be sent (for demos without real email)
+- Pattern: Two-step transactions prevent accidental bookings and match real-world UX
+
+#### 3. Flight Times and Class Selection (`week2/day5.ipynb`)
+**What:** Implement scheduled departure times and class tiers with pricing
+
+**Why:**
+- Real airlines have fixed departure times, not arbitrary times
+- Class selection affects pricing significantly
+- Learn to define and use configuration constants
+
+**What I learned:**
+- **Flight times configuration:** Dictionary mapping time slots to display times
+  ```python
+  FLIGHT_TIMES = {"morning": "06:00 AM", "mid-morning": "10:00 AM", ...}
+  ```
+- **Class multipliers:** Economy (1x), Business (2.5x), First Class (4x)
+- **Tax calculation:** Apply percentage to subtotal (e.g., 12% taxes)
+- **Normalization functions:** Convert user input to standard values (fuzzy matching)
+- Pattern: Use configuration dictionaries for business rules, not hardcoded values
+
+#### 4. Quote → Confirm Workflow (`week2/day5.ipynb`)
+**What:** Implement two-step booking where quote must be confirmed before finalization
+
+**Why:**
+- Prevents accidental bookings (industry standard)
+- Allows user to review full price before committing
+- Mirrors real payment flows
+- Teaches proper transactional patterns
+
+**What I learned:**
+- **Quote storage:** Save quote to database with unique quote_id
+- **Quote expiration:** Real systems have quote validity periods
+- **Quote status:** Track `pending`, `confirmed`, `expired`
+- **Confirmation flow:** Look up quote by ID → validate status → create booking
+- **Booking ID generation:** Use UUID for unique booking references
+- Pattern: Quote → Confirm separates "show price" from "charge customer"
+
+#### 5. Handling LLM Training Data Cutoff (`week2/day5.ipynb`)
+**What:** Allow booking for dates beyond LLM's training data cutoff
+
+**Why:**
+- LLMs are trained on data up to a specific date
+- Users need to book flights for future dates (2025, 2026, etc.)
+- Must validate dates in code, not rely on LLM assumptions
+- Real-world requirement for any date-based application
+
+**What I learned:**
+- **Date parsing:** Use `dateutil.parser.parse()` for flexible format handling
+- **Future date validation:** Compare parsed date against `datetime.now().date()`
+- **Date format standardization:** Convert all dates to `YYYY-MM-DD` internally
+- **Error messages:** Provide clear feedback when dates are invalid
+- Pattern: Parse dates in code, validate against real time, don't trust LLM date assumptions
+
+#### 6. Booking Cancellation (`week2/day5.ipynb`)
+**What:** Allow users to cancel existing bookings
+
+**Why:**
+- Complete booking systems need cancellation capability
+- Learn to update database records (status changes)
+- Practice simulated refund flows
+
+**What I learned:**
+- **Status updates:** Change booking status from `confirmed` to `cancelled`
+- **Refund simulation:** Show what refund would be (without actual payment processing)
+- **Confirmation email:** Send cancellation confirmation to user email
+- Pattern: Cancellation = status update + simulated refund + confirmation
+
 ## Notebooks
 
-1. `00_multi_provider_setup.ipynb` - Setting up multiple API providers
-2. `01_prompt_variations.ipynb` - Testing different prompt structures
-3. `02_reasoning_and_constraints.ipynb` - Chain-of-thought and constraint handling
-4. `03_structured_outputs_json.ipynb` - JSON mode and structured outputs
-5. `04_prompt_caching.ipynb` - Prompt caching cost optimization
-6. `05_model_comparison.ipynb` - Comparing different models on same tasks
-7. `06_multi_model_conversations.ipynb` - Multi-model conversation patterns
-8. `06_gradio_intro.ipynb` - Building simple UIs with Gradio (Day 2 & Day 3)
-9. `07_tool_calling.ipynb` - Tool Calling / Function Calling patterns (Day 4)
-10. `week2/day3.ipynb` - Conversational AI with ChatInterface (Day 3 - Course notebook)
-11. `week2/day4.ipynb` - Tool Calling / Function Calling with Airline Assistant (Day 4 - Course notebook)
+### Experiments Folder (My Learning Lab)
+1. `01_multi_provider_setup.ipynb` - Setting up multiple API providers (Day 1)
+2. `02_gradio_and_chat_interface.ipynb` - Building UIs with Gradio & ChatInterface (Day 2-3)
+3. `03_tool_calling.ipynb` - Tool Calling / Function Calling patterns (Day 4)
 
-## Mini Projects
-
-- `multi_provider_chat/` - CLI tool for chatting with multiple providers
-  - Unified interface for OpenAI, Anthropic, Gemini, DeepSeek, Groq, Grok, Ollama
-  - Model comparison mode
-  - Cost tracking
-  - Conversation history management
+### Course Notebooks (week2/ folder)
+4. `week2/day3.ipynb` - Conversational AI with ChatInterface (Day 3 - Course)
+5. `week2/day4.ipynb` - Tool Calling with Airline Assistant (Day 4 - Course)
+6. `week2/day5.ipynb` - Multi-Modal AI & Enhanced Booking System (Day 5 - Course + My Extension)
 
 ## Setup
 
@@ -404,14 +508,20 @@ This is a **learning lab**, not a portfolio project. Experiments here are:
 
 3. Install dependencies: `pip install -r requirements.txt` (if applicable)
 
-4. Run notebooks individually or use `scripts/run_notebooks_smoke.py` for quick validation
+4. Run notebooks individually to explore concepts
 
 ## Notes
 
 See `notes.md` for:
-- Key learnings from each experiment
+- Key learnings from each day (Day 1-5)
+- Detailed code patterns with explanations
 - Tradeoffs observed (cost, latency, accuracy)
 - Ideas to extract for future projects
 - Provider-specific patterns and best practices
+
+See `results/week2_observations.md` for:
+- High-level findings from each day
+- Summary of what worked and what didn't
+- Business implications and recommendations
 
 

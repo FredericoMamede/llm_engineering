@@ -300,3 +300,118 @@ if 'keyword' in message.lower():
 **Tradeoff:**
 - **Comprehensive handling:** Robust, but more code
 - **Minimal handling:** Simpler, but fails ungracefully
+
+## Day 5: Multi-Modal AI & Enhanced Tool Calling
+
+### Multi-Modal AI Responses
+
+**Finding:** Combining text with image/audio generation creates richer user experiences
+- **DALL-E-3:** `openai.images.generate(model="dall-e-3", prompt=..., size="1024x1024")`
+- **TTS:** `openai.audio.speech.create(model="tts-1", voice="alloy", input=message)`
+- **Image handling:** Base64 encoding for display in UI
+- **Audio handling:** Response is streamable audio file
+
+**Pattern:** Multi-modal = multiple API calls + proper handling of each modality
+
+**Tradeoff:**
+- **Multi-modal:** Richer UX, but more API calls and cost
+- **Text-only:** Simpler, cheaper, but less engaging
+
+### Two-Step Booking Flow (Quote → Confirm)
+
+**Finding:** Real booking systems never complete transactions without showing price first
+- **Quote step:** Show full price breakdown, save with unique quote_id
+- **Confirm step:** Lookup quote, validate status, create booking, return booking_id
+- **Database design:** Separate tables for quotes (pending) and bookings (confirmed)
+- **Status tracking:** Track quote status (pending, confirmed, expired)
+
+**Benefits:**
+- Prevents accidental bookings
+- Matches industry-standard UX
+- Allows user to review before committing
+- Mirrors real payment flows
+
+**Pattern:** Quote → Confirm separates "show price" from "finalize transaction"
+
+**Tradeoff:**
+- **Two-step:** More complex, but safer and better UX
+- **One-step:** Simpler, but risk of accidental bookings
+
+### Handling LLM Training Data Cutoff
+
+**Finding:** LLMs cannot be trusted for date handling beyond training cutoff
+- **Problem:** LLM might default to dates from training data
+- **Solution:** Parse and validate dates in code using `dateutil.parser`
+- **Future validation:** Compare against `datetime.now()`, not LLM assumptions
+- **Flexible parsing:** Handle various formats ("June 15, 2025", "2025-06-15", "next month")
+
+**Key Insight:**
+- Date validation is a **code responsibility**, not LLM responsibility
+- Users need to book for dates years in the future
+- Real applications must work with actual current dates
+
+**Pattern:** Parse dates in code, validate against real time, don't trust LLM date assumptions
+
+### Complex Tool Definitions
+
+**Finding:** Real-world tools can have 10+ parameters with proper schema design
+- **Required vs optional:** Separate required parameters from optional ones
+- **Clear descriptions:** LLM uses descriptions to understand what to ask user
+- **Type hints:** Use proper JSON schema types (string, integer, etc.)
+- **Validation in function:** Tool function validates all inputs before processing
+
+**Example:** Flight quote tool with 11 parameters (8 required, 3 optional)
+
+**Pattern:** Comprehensive tool definitions guide LLM to collect all required information
+
+### Configuration Dictionaries for Business Rules
+
+**Finding:** Use configuration dictionaries instead of hardcoded values
+- **Flight times:** Dictionary mapping time slots to display times
+- **Class multipliers:** Dictionary mapping class names to price multipliers
+- **Tax rates:** Single constant for easy updates
+
+**Benefits:**
+- Easy to update without code changes
+- Self-documenting (dictionary shows all options)
+- Consistent across functions
+- Could be loaded from config file/database in production
+
+**Pattern:** Business rules in configuration dictionaries, not scattered hardcoded values
+
+### Normalization Functions
+
+**Finding:** User input varies widely, need normalization to standard values
+- **Time normalization:** "morning", "6 AM", "06:00" all → "morning"
+- **Class normalization:** "first class", "First", "1st class" all → "first"
+- **Fuzzy matching:** Handle variations user might type
+
+**Pattern:** Normalization functions convert user input to standard internal values
+
+### Email Confirmation Simulation
+
+**Finding:** For demos, show what email would contain without actual sending
+- **Formatted display:** ASCII art borders, clear sections, all details
+- **What would be sent:** Show recipient, booking ID, flight details, price
+- **Reusable template:** Same format for booking and cancellation
+
+**Pattern:** Simulated email = formatted string showing what real email would contain
+
+### Enhanced Booking System - Key Learnings
+
+**Summary of Day 5 Extension:**
+1. **Two-step flow:** Quote → Confirm (industry standard)
+2. **Flight times:** 5 scheduled departure times
+3. **Class selection:** Economy (1x), Business (2.5x), First (4x)
+4. **Price breakdown:** Base × passengers × class + taxes
+5. **Date handling:** Parse and validate beyond LLM training cutoff
+6. **Email simulation:** Show what would be sent
+7. **Multiple passengers:** Support 1-9
+8. **Round trip/one-way:** Optional return date
+9. **Cancellation:** Status update + simulated refund
+
+**Why This Matters:**
+- Matches real-world booking UX
+- Teaches production-ready patterns
+- Demonstrates complex tool orchestration
+- Shows proper date/validation handling
