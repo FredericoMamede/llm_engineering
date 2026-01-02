@@ -170,6 +170,8 @@ vector_db/
 products_vectorstore/
 *.db
 
+# TTS output files
+*.mp3
 
 # And ignore any pickle files made during the course
 *.pkl
