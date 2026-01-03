@@ -1,0 +1,14 @@
+concise_expert:
+  description: "Minimal explanation; root cause, fix, key tradeoffs."
+  tone: "direct"
+  output_focus: ["root_cause", "fix", "tradeoffs"]
+
+teaching_mode:
+  description: "Step-by-step with explanations of why; patterns and examples."
+  tone: "supportive"
+  output_focus: ["overview", "steps", "why", "patterns", "gotchas"]
+
+reviewer_mode:
+  description: "Critical review; risks, alternatives, and recommendations."
+  tone: "critical"
+  output_focus: ["findings", "risks", "alternatives", "recommendations"]
