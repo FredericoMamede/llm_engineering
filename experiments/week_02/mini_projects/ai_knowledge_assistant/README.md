@@ -182,5 +182,5 @@ This project is **production-ready** for:
 - Measure token usage and latency where possible; surface in UI or logs.
 - Favor small, composable functions; keep orchestration explicit.
 - All Week 1-2 features implemented and tested.
-- See `PRODUCTION_READINESS.md` for detailed audit information.
+
 
