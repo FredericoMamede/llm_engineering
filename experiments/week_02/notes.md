@@ -374,6 +374,48 @@ class BrochureGenerator:
 
 ---
 
+## Known Pitfalls
+
+### Gradio Audio Component State Loss During Streaming
+
+**Problem:** When using generator functions (`yield`) with Gradio audio components, the audio component values can become `None` during UI re-renders, even when audio was successfully recorded.
+
+**Symptom:** Audio transcription fails when chat history already contains messages. The audio file exists and can be played, but `transcribe_and_send()` receives `None` instead of the file path.
+
+**Root Cause:** Gradio loses track of component values during generator yields when the UI updates (e.g., chatbot history changes). This is a known limitation with async UI state management in Gradio.
+
+**Solution:** Use `gr.State` to capture audio path immediately when recorded/uploaded, before any generator yields occur. Wire audio components' `.change()` events to update state, then use state value in the transcription function instead of component values.
+
+**Pattern:**
+```python
+# Capture audio to state immediately
+audio_path_state = gr.State(None)
+
+def capture_audio(audio):
+    return audio
+
+mic_input.change(fn=capture_audio, inputs=[mic_input], outputs=[audio_path_state])
+file_input.change(fn=capture_audio, inputs=[file_input], outputs=[audio_path_state])
+
+# Use state in function, not component values
+def transcribe_and_send(audio_path, history, ...):  # audio_path from state
+    ...
+
+send_to_chat_btn.click(
+    fn=transcribe_and_send,
+    inputs=[audio_path_state, ...],  # Not mic_input/file_input
+    ...
+)
+```
+
+**When to Apply:** Any Gradio interface where audio components are used with generator functions that yield multiple times, especially when other components (like chatbot) update during the generator execution.
+
+**Tradeoff:**
+- **State-based:** Reliable, works with existing chat history, but requires explicit state management
+- **Component-based:** Simpler initially, but fails when UI updates during generator execution
+
+---
+
 ## Day 3: Conversational AI with Gradio ChatInterface
 
 ### Gradio ChatInterface
