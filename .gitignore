@@ -218,3 +218,8 @@ week6/*.pth
 week6/*.joblib
 week8/*.pth
 README_PRIVATE.md
+
+# AI Knowledge Assistant (Weeks 1–2 capstone)
+experiments/week_02/mini_projects/ai_knowledge_assistant/data/*.db
+experiments/week_02/mini_projects/ai_knowledge_assistant/data/*.sqlite
+experiments/week_02/mini_projects/ai_knowledge_assistant/data/*.sqlite3
