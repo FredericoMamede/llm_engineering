@@ -172,6 +172,7 @@ products_vectorstore/
 
 # TTS output files
 week2/exercise/outputs/
+experiments/week_02/mini_projects/ai_knowledge_assistant/data/
 
 # And ignore any pickle files made during the course
 *.pkl
