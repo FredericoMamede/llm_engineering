@@ -4,7 +4,7 @@ Summarizes and extracts key points from technical documents.
 """
 
 import re
-from typing import Any, List
+from typing import List
 
 # Patterns for extracting structure
 HEADING_PATTERN = re.compile(r"^(#+)\s+(.+)$", re.MULTILINE)

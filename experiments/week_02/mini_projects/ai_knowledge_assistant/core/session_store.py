@@ -2,7 +2,7 @@
 Session store: SQLite-backed persistence for sessions and transcripts.
 """
 
-import os
+
 import sqlite3
 from datetime import datetime
 from pathlib import Path

@@ -4,7 +4,7 @@ Performs quick/deep code review with best-practice checks.
 """
 
 import re
-from typing import Any, List
+from typing import List
 
 # Best practice patterns to check
 QUICK_CHECKS = [
@@ -109,7 +109,6 @@ def _check_function_length(code: str) -> List[dict]:
     
     func_start = None
     func_name = None
-    indent_level = None
     
     for i, line in enumerate(lines):
         # Detect function definition
@@ -126,7 +125,6 @@ def _check_function_length(code: str) -> List[dict]:
                 })
             func_start = i
             func_name = match.group(2)
-            indent_level = len(match.group(1))
     
     # Check last function
     if func_start is not None and len(lines) - func_start > 50:

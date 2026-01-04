@@ -1,13 +1,23 @@
 """
 Loaders: text/file/URL ingestion and normalization.
+
+Supports both static HTML (requests + BeautifulSoup) and JavaScript-rendered sites (Playwright).
+Uses hybrid approach: try static first, fallback to Playwright if needed.
 """
 
-import os
+import time
 from typing import Dict, Optional
 from pathlib import Path
 
 import requests
 from bs4 import BeautifulSoup
+
+# Playwright for JavaScript-rendered sites
+try:
+    from playwright.sync_api import sync_playwright
+    PLAYWRIGHT_AVAILABLE = True
+except ImportError:
+    PLAYWRIGHT_AVAILABLE = False
 
 
 def load_text(text: str) -> Dict:
@@ -35,7 +45,7 @@ def load_file(file_path: str) -> Dict:
         
         # Security: Prevent directory traversal
         # Ensure the resolved path is within expected boundaries
-        # In production, you'd restrict to a specific upload directory
+        # In production, would restrict to a specific upload directory
         if not path.exists():
             return {"type": "file", "content": "", "error": f"File not found: {file_path}"}
         
@@ -79,11 +89,75 @@ def load_file(file_path: str) -> Dict:
         return {"type": "file", "content": "", "error": f"Error reading file: {e}"}
 
 
-def load_url(url: str, timeout: int = 10) -> Dict:
+def _is_js_heavy(html: str) -> bool:
+    """
+    Detect if page likely requires JavaScript to render content.
+    
+    Checks for common indicators of JS-rendered content.
+    """
+    if not html:
+        return True
+    
+    html_lower = html.lower()
+    
+    # Check for common JS framework indicators
+    js_indicators = [
+        "react", "vue", "angular", "next.js", "nuxt",
+        "loading...", "please enable javascript", "noscript",
+        "data-reactroot", "__next__", "ng-app",
+    ]
+    
+    if any(indicator in html_lower for indicator in js_indicators):
+        return True
+    
+    # Check if body content is very minimal (likely JS-rendered)
+    soup = BeautifulSoup(html, "html.parser")
+    if soup.body:
+        body_text = soup.body.get_text(strip=True)
+        # If body has less than 200 chars, likely needs JS
+        if len(body_text) < 200:
+            return True
+    
+    return False
+
+
+def _fetch_with_playwright(url: str, timeout: int = 30) -> Optional[str]:
+    """
+    Fetch URL content using Playwright (handles JavaScript).
+    
+    Returns HTML string or None if failed.
+    """
+    if not PLAYWRIGHT_AVAILABLE:
+        return None
+    
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            page = browser.new_page()
+            
+            # Navigate and wait for content to load
+            page.goto(url, wait_until="networkidle", timeout=timeout * 1000)
+            
+            # Additional wait for dynamic content
+            time.sleep(2)
+            
+            # Get rendered HTML after JS execution
+            html = page.content()
+            browser.close()
+            
+            return html
+    except Exception as e:
+        # Playwright failed, return None to fallback
+        return None
+
+
+def load_url(url: str, timeout: int = 10, use_js_fallback: bool = True) -> Dict:
     """
     Load and extract text content from a URL with security validation.
     
-    Uses requests + BeautifulSoup for static pages.
+    Hybrid approach:
+    1. Try requests + BeautifulSoup first (fast, for static pages)
+    2. If content seems JS-rendered, fallback to Playwright (slower, handles JS)
     
     Security: Validates URL scheme and prevents SSRF attacks.
     """
@@ -103,10 +177,14 @@ def load_url(url: str, timeout: int = 10) -> Dict:
         return {"type": "url", "content": "", "error": "Invalid URL format"}
     
     # Security: Prevent SSRF by blocking local/private IPs (basic check)
-    # In production, use a proper SSRF protection library
+    # In production, should use a proper SSRF protection library
     blocked_hosts = ["localhost", "127.0.0.1", "0.0.0.0", "::1"]
     if parsed.hostname and parsed.hostname.lower() in blocked_hosts:
         return {"type": "url", "content": "", "error": "Local URLs are not allowed for security"}
+    
+    # Try static fetch first (fast)
+    html = None
+    fetch_method = "static"
     
     try:
         headers = {
@@ -114,9 +192,23 @@ def load_url(url: str, timeout: int = 10) -> Dict:
         }
         response = requests.get(url, headers=headers, timeout=timeout, allow_redirects=True)
         response.raise_for_status()
-        
-        # Parse HTML and extract text
-        soup = BeautifulSoup(response.text, "html.parser")
+        html = response.text
+    except requests.Timeout:
+        return {"type": "url", "content": "", "error": f"Timeout fetching URL: {url}"}
+    except requests.RequestException as e:
+        return {"type": "url", "content": "", "error": f"Error fetching URL: {e}"}
+    
+    # Check if JavaScript is needed
+    if use_js_fallback and _is_js_heavy(html):
+        # Try Playwright fallback
+        playwright_html = _fetch_with_playwright(url, timeout=timeout)
+        if playwright_html:
+            html = playwright_html
+            fetch_method = "playwright"
+    
+    # Parse and extract content
+    try:
+        soup = BeautifulSoup(html, "html.parser")
         
         # Remove script and style elements
         for tag in soup(["script", "style", "nav", "footer", "header"]):
@@ -140,12 +232,8 @@ def load_url(url: str, timeout: int = 10) -> Dict:
             "source": url,
             "title": soup.title.string if soup.title else None,
             "size": len(content),
+            "fetch_method": fetch_method,  # For debugging
         }
-    
-    except requests.Timeout:
-        return {"type": "url", "content": "", "error": f"Timeout fetching URL: {url}"}
-    except requests.RequestException as e:
-        return {"type": "url", "content": "", "error": f"Error fetching URL: {e}"}
     except Exception as e:
         return {"type": "url", "content": "", "error": f"Error processing URL: {e}"}
 

@@ -18,13 +18,33 @@ import gradio as gr
 import pandas as pd
 from dotenv import load_dotenv
 
-# Allow relative imports
-sys.path.insert(0, os.path.dirname(__file__))
+# Allow relative imports - ensure project root is on path
+project_root = os.path.dirname(__file__)
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 
 from core.orchestrator import Orchestrator
 from core.auth import is_auth_enabled, check_auth, require_auth_configured
-from io.loaders import load_file, load_url, detect_input_type
-from io.audio import transcribe, speak
+
+# Import from local io module (avoid conflict with built-in io module)
+# Workaround: import from the package using importlib to avoid built-in io conflict
+import importlib.util
+_io_loaders_path = os.path.join(project_root, "io", "loaders.py")
+_io_audio_path = os.path.join(project_root, "io", "audio.py")
+
+_io_loaders_spec = importlib.util.spec_from_file_location("io_loaders", _io_loaders_path)
+_io_loaders = importlib.util.module_from_spec(_io_loaders_spec)
+_io_loaders_spec.loader.exec_module(_io_loaders)
+
+_io_audio_spec = importlib.util.spec_from_file_location("io_audio", _io_audio_path)
+_io_audio = importlib.util.module_from_spec(_io_audio_spec)
+_io_audio_spec.loader.exec_module(_io_audio)
+
+load_file = _io_loaders.load_file
+load_url = _io_loaders.load_url
+detect_input_type = _io_loaders.detect_input_type
+transcribe = _io_audio.transcribe
+speak = _io_audio.speak
 
 load_dotenv(override=True)
 
@@ -32,7 +52,11 @@ load_dotenv(override=True)
 require_auth_configured()
 
 # Initialize orchestrator (validates models at startup)
-print("\nStarting AI Knowledge Assistant...\n")
+from core.logger import get_logger, log_access, error_logger, log_error
+
+logger = get_logger(__name__)
+logger.info("Starting AI Knowledge Assistant...")
+
 orchestrator = Orchestrator()
 orchestrator.load_prompts(os.path.join(os.path.dirname(__file__), "prompts"))
 
@@ -61,7 +85,11 @@ def chat_fn(message, history, model, profile, file, url, session_id):
     """
     Main chat callback with file/URL support and model validation.
     
-    Priority: file > URL > text message
+    If both file and URL are present, both are processed and combined.
+    This ensures that inputs are processed based on what's currently in the inputs,
+    and inputs are cleared after processing to avoid confusion.
+    
+    Yields: response chunks (strings)
     """
     # Validate model selection first
     is_available, validation_msg = orchestrator.model_registry.validate_selection(model)
@@ -72,17 +100,43 @@ def chat_fn(message, history, model, profile, file, url, session_id):
     # Generate new session if none exists
     if not session_id:
         session_id = "chat-" + str(uuid.uuid4())
+        log_access("session_created", session_id=session_id)
     
-    # Determine input source
-    content = ""
+    # Log access
+    log_access(
+        "chat_request",
+        session_id=session_id,
+        model=model,
+        profile=profile,
+        has_file=file is not None,
+        has_url=bool(url and url.strip()),
+        has_message=bool(message and message.strip()),
+    )
+    
+    # Determine input source - can process both file and URL if both are present
+    content_parts = []
+    
     if file is not None:
-        content = process_file(file)
-        if content and not content.startswith("["):
-            content = f"[Uploaded file: {file.name}]\n\n{content}"
-    elif url and url.strip():
-        content = process_url(url)
-        if content and not content.startswith("["):
-            content = f"[URL: {url.strip()}]\n\n{content}"
+        # Process file
+        file_content = process_file(file)
+        if file_content and not file_content.startswith("["):
+            content_parts.append(f"[Uploaded file: {file.name}]\n\n{file_content}")
+        elif file_content:
+            content_parts.append(file_content)
+    
+    if url and url.strip():
+        # Process URL
+        url_content = process_url(url)
+        if url_content and not url_content.startswith("["):
+            content_parts.append(f"[URL: {url.strip()}]\n\n{url_content}")
+        elif url_content:
+            content_parts.append(url_content)
+    
+    # Combine all content parts
+    if content_parts:
+        content = "\n\n---\n\n".join(content_parts)
+    else:
+        content = ""
     
     # Combine with message if both present
     if content:
@@ -113,17 +167,23 @@ def chat_fn(message, history, model, profile, file, url, session_id):
                 for msg in stored_history
             ]
         else:
-            # Convert Gradio history to API format (for new sessions)
+            # Convert Gradio 6.0 messages format to API format (for new sessions)
             history_for_api = []
             for h in history or []:
-                if isinstance(h, (list, tuple)) and len(h) == 2:
+                if isinstance(h, dict) and "role" in h and "content" in h:
+                    # Already in correct format
+                    history_for_api.append({"role": h["role"], "content": h["content"]})
+                elif isinstance(h, (list, tuple)) and len(h) == 2:
+                    # Old tuple format (shouldn't happen with type="messages", but handle it)
                     history_for_api.append({"role": "user", "content": h[0]})
                     history_for_api.append({"role": "assistant", "content": h[1]})
     else:
         # Fallback to Gradio history
         history_for_api = []
         for h in history or []:
-            if isinstance(h, (list, tuple)) and len(h) == 2:
+            if isinstance(h, dict) and "role" in h and "content" in h:
+                history_for_api.append({"role": h["role"], "content": h["content"]})
+            elif isinstance(h, (list, tuple)) and len(h) == 2:
                 history_for_api.append({"role": "user", "content": h[0]})
                 history_for_api.append({"role": "assistant", "content": h[1]})
 
@@ -144,8 +204,10 @@ def on_model_select(model_name):
     """Handle model selection - show warning if not available."""
     is_available, msg = orchestrator.model_registry.validate_selection(model_name)
     if is_available:
+        log_access("model_selected", model=model_name)
         return gr.update(visible=False)
     else:
+        log_access("model_selection_failed", model=model_name, reason=msg)
         return gr.update(value=msg, visible=True)
 
 
@@ -155,7 +217,7 @@ def build_ui():
     model_choices = orchestrator.model_registry.get_ui_choices()
     available_models = orchestrator.model_registry.get_available()
     available_profiles = orchestrator.prompt_profiles.available()
-    
+
     # Determine default model (first available)
     default_model = available_models[0] if available_models else (model_choices[0][1] if model_choices else None)
 
@@ -177,6 +239,15 @@ def build_ui():
     .status-ready { color: #28a745; }
     .status-warning { color: #ffc107; }
     .status-error { color: #dc3545; }
+    .input-info {
+        background-color: #e7f3ff;
+        border-left: 3px solid #2196F3;
+        padding: 8px 12px;
+        margin: 8px 0;
+        border-radius: 4px;
+        font-size: 0.9em;
+        color: #1565C0;
+    }
     """
 
     # Configure auth (required unless DISABLE_AUTH=true)
@@ -191,7 +262,12 @@ def build_ui():
         print("\n[WARN] Authentication is DISABLED (DISABLE_AUTH=true).")
         print("       This should only be used for development.\n")
     
-    with gr.Blocks(title="AI Knowledge Assistant", theme=gr.themes.Soft(), css=custom_css, auth=auth_creds) as demo:
+    # Gradio 6.0+ requires auth, theme, and css in launch(), not Blocks()
+    with gr.Blocks(title="AI Knowledge Assistant") as demo:
+        # Store launch parameters for later
+        demo._launch_auth = auth_creds
+        demo._launch_theme = gr.themes.Soft()
+        demo._launch_css = custom_css
         gr.Markdown(
             """
             # AI Knowledge Assistant
@@ -230,8 +306,13 @@ def build_ui():
             on_model_select,
             inputs=[model_dropdown],
             outputs=[model_warning],
-        )
+            )
 
+        gr.Markdown(
+            "**Note:** File and URL inputs are automatically cleared after processing. "
+            "If both are provided in the same message, both will be processed together.",
+            elem_classes=["input-info"]
+        )
         with gr.Row():
             file_input = gr.File(
                 label="Upload File (optional)",
@@ -243,6 +324,11 @@ def build_ui():
                 placeholder="https://example.com/docs",
                 scale=1,
             )
+
+        # Chatbot and session state must be defined before audio handlers
+        # Gradio Chatbot uses messages format: [{"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}]
+        chatbot = gr.Chatbot(label="Conversation", height=400)
+        session_state = gr.State(None)
         
         # Audio input (optional, Day 2 feature)
         with gr.Accordion("Voice Input (Optional)", open=False):
@@ -280,26 +366,60 @@ def build_ui():
             
             def transcribe_and_send(audio_path, history, model, profile, session_id):
                 """Transcribe audio and send directly to chat."""
+                # Normalize history to messages format
+                formatted_history = []
+                for h in (history or []):
+                    if isinstance(h, dict) and "role" in h and "content" in h:
+                        # Already in correct format
+                        formatted_history.append({"role": h["role"], "content": h["content"]})
+                    elif isinstance(h, (list, tuple)) and len(h) == 2:
+                        # Legacy tuple format - convert to messages format
+                        formatted_history.append({"role": "user", "content": str(h[0])})
+                        formatted_history.append({"role": "assistant", "content": str(h[1])})
+                
                 if audio_path is None:
-                    yield history, session_id, "No audio provided. Record or upload first."
+                    yield formatted_history, session_id, "No audio provided. Record or upload first."
                     return
                 
                 transcribed = transcribe(audio_path)
                 
                 if transcribed.startswith("Error") or not transcribed.strip():
-                    yield history, session_id, transcribed
+                    yield formatted_history, session_id, transcribed
                     return
                 
-                yield history, session_id, f"Transcribed: {transcribed}"
+                yield formatted_history, session_id, f"Transcribed: {transcribed}"
+                
+                # Convert to API format for chat_fn
+                history_for_api = []
+                for h in formatted_history:
+                    history_for_api.append({"role": h["role"], "content": h["content"]})
                 
                 # Send transcribed text to chat
                 response = ""
-                for chunk in chat_fn(transcribed, history, model, profile, None, None, session_id):
-                    response = chunk
-                    yield history, session_id, f"Transcribed: {transcribed}"
+                current_history = formatted_history.copy()
+                # Add user message
+                current_history.append({"role": "user", "content": transcribed})
                 
-                history.append((transcribed, response))
-                yield history, session_id, f"Sent: {transcribed}"
+                for chunk in chat_fn(transcribed, history_for_api, model, profile, None, None, session_id):
+                    response = chunk
+                    # Update history as we stream
+                    if current_history and len(current_history) > 0 and current_history[-1]["role"] == "user":
+                        # Add assistant response
+                        current_history.append({"role": "assistant", "content": response})
+                    elif current_history and len(current_history) > 0 and current_history[-1]["role"] == "assistant":
+                        # Update existing assistant response
+                        current_history[-1] = {"role": "assistant", "content": response}
+                    yield current_history, session_id, f"Transcribed: {transcribed}"
+                
+                # Final update
+                if current_history and len(current_history) > 0 and current_history[-1]["role"] == "assistant":
+                    current_history[-1] = {"role": "assistant", "content": response}
+                elif current_history and len(current_history) > 0 and current_history[-1]["role"] == "user":
+                    current_history.append({"role": "assistant", "content": response})
+                else:
+                    current_history.append({"role": "assistant", "content": response})
+                
+                yield current_history, session_id, f"Sent: {transcribed}"
             
             transcribe_btn.click(
                 fn=transcribe_and_send,
@@ -308,46 +428,124 @@ def build_ui():
                 show_progress="full"
             )
 
-        chatbot = gr.Chatbot(label="Conversation", height=400)
         msg_input = gr.Textbox(
             label="Your Question",
             placeholder="Ask a question, paste code/error, or describe what you need...",
             lines=3,
         )
         
-        # Session state to maintain conversation across messages
-        session_state = gr.State(None)
-        
         # Last response for TTS
         last_response_state = gr.State("")
         
         with gr.Row():
             submit_btn = gr.Button("Send", variant="primary")
-            clear_btn = gr.ClearButton([msg_input, chatbot, file_input, url_input], value="Clear")
-        
+            # ClearButton automatically clears listed components when clicked - no explicit wiring needed
+            gr.ClearButton([msg_input, chatbot, file_input, url_input], value="Clear")
+
         # Wire up the chat
         def respond(message, history, model, profile, file, url, session_id):
-            history = history or []
-            response = ""
+            """Handle user message and stream response - messages format.
             
-            # Show loading state
-            if not message.strip() and not file and not url:
-                yield "", history, session_id, ""
-                return
-            
-            # Stream response with session persistence
-            for chunk in chat_fn(message, history, model, profile, file, url, session_id):
-                response = chunk
-                yield "", history, session_id, ""
-            
-            # Update history and return session_id
-            history.append((message, response))
-            yield "", history, session_id, response
+            Clears file/URL inputs after processing to ensure only new inputs are considered.
+            If both file and URL are present, both are processed and combined.
+            """
+            try:
+                # Gradio Chatbot uses messages format: [{"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}]
+                # Normalize history to list of message dicts
+                if not isinstance(history, list):
+                    history = []
+                
+                formatted_history = []
+                for h in history:
+                    if isinstance(h, dict) and "role" in h and "content" in h:
+                        # Already in correct format
+                        formatted_history.append({"role": h["role"], "content": h["content"]})
+                    elif isinstance(h, (list, tuple)) and len(h) == 2:
+                        # Legacy tuple format - convert to messages format
+                        formatted_history.append({"role": "user", "content": str(h[0])})
+                        formatted_history.append({"role": "assistant", "content": str(h[1])})
+                
+                # Show loading state - ignore empty messages
+                if not message.strip() and not file and not url:
+                    yield "", formatted_history, session_id, "", None, ""  # msg_input, chatbot, session_state, last_response_state, file_input, url_input
+                    return
+                
+                # Determine what inputs are present (both can be present)
+                has_file = file is not None
+                has_url = bool(url and url.strip())
+                
+                # Build user display text showing what will be processed
+                input_parts = []
+                if has_file:
+                    input_parts.append(f"📎 {file.name}")
+                if has_url:
+                    input_parts.append(f"🔗 {url.strip()}")
+                
+                if input_parts:
+                    input_info = " + ".join(input_parts)
+                    if message and message.strip():
+                        user_display_text = f"{message.strip()} ({input_info})"
+                    else:
+                        user_display_text = f"Processing: {input_info}"
+                else:
+                    user_display_text = message.strip() if message else "User"
+                
+                # Convert history to API format (dicts) for chat_fn
+                history_for_api = []
+                for h in formatted_history:
+                    history_for_api.append({"role": h["role"], "content": h["content"]})
+                
+                # Stream response - update history as we go
+                current_history = formatted_history.copy()
+                # Add user message to history
+                current_history.append({"role": "user", "content": user_display_text})
+                response = ""
+                
+                for chunk in chat_fn(message, history_for_api, model, profile, file, url, session_id):
+                    response = chunk
+                    if not isinstance(response, str):
+                        response = str(response) if response else ""
+                    
+                    # Update assistant message in history
+                    if current_history and len(current_history) > 0 and current_history[-1]["role"] == "user":
+                        # Add assistant response
+                        current_history.append({"role": "assistant", "content": response})
+                    elif current_history and len(current_history) > 0 and current_history[-1]["role"] == "assistant":
+                        # Update existing assistant response
+                        current_history[-1] = {"role": "assistant", "content": response}
+                    
+                    # Yield updated history (messages format) - keep inputs for now, clear at end
+                    yield "", current_history, session_id, "", file, url
+                
+                # Final yield with complete response - CLEAR INPUTS after processing
+                if current_history and len(current_history) > 0 and current_history[-1]["role"] == "assistant":
+                    current_history[-1] = {"role": "assistant", "content": response}
+                elif current_history and len(current_history) > 0 and current_history[-1]["role"] == "user":
+                    current_history.append({"role": "assistant", "content": response})
+                else:
+                    current_history.append({"role": "assistant", "content": response})
+                
+                # Clear file and URL inputs after processing
+                yield "", current_history, session_id, response, None, ""
+                
+            except Exception as e:
+                # Log error
+                log_error(error_logger, e, context={
+                    "function": "respond",
+                    "message": message[:100] if message else None,
+                })
+                # Return error in proper format - clear inputs on error too
+                error_msg = f"Error: {str(e)}"
+                error_history = formatted_history.copy() if 'formatted_history' in locals() else []
+                user_msg = user_display_text if 'user_display_text' in locals() else (message.strip() if message else "User")
+                error_history.append({"role": "user", "content": str(user_msg)})
+                error_history.append({"role": "assistant", "content": str(error_msg)})
+                yield "", error_history, session_id, error_msg, None, ""
 
         submit_btn.click(
             respond,
             inputs=[msg_input, chatbot, model_dropdown, profile_dropdown, file_input, url_input, session_state],
-            outputs=[msg_input, chatbot, session_state, last_response_state],
+            outputs=[msg_input, chatbot, session_state, last_response_state, file_input, url_input],
         ).then(
             lambda h: h,
             inputs=[chatbot],
@@ -357,7 +555,7 @@ def build_ui():
         msg_input.submit(
             respond,
             inputs=[msg_input, chatbot, model_dropdown, profile_dropdown, file_input, url_input, session_state],
-            outputs=[msg_input, chatbot, session_state, last_response_state],
+            outputs=[msg_input, chatbot, session_state, last_response_state, file_input, url_input],
         ).then(
             lambda h: h,
             inputs=[chatbot],
@@ -399,11 +597,11 @@ def build_ui():
         with gr.Accordion("Session Management", open=False):
             gr.Markdown("View and manage conversation sessions.")
             
+            # Gradio 6.0+ doesn't support height parameter for Dataframe
             session_list = gr.Dataframe(
                 headers=["Session ID", "Started", "Last Activity", "Messages"],
                 label="Recent Sessions",
-                interactive=False,
-                height=200
+                interactive=False
             )
             
             def load_sessions():
@@ -464,5 +662,37 @@ def build_ui():
 
 
 if __name__ == "__main__":
-    app = build_ui()
-    app.launch()
+    import sys
+    
+    # Set up global exception handler to log all uncaught exceptions
+    def exception_handler(exc_type, exc_value, exc_traceback):
+        """Global exception handler to log all uncaught exceptions."""
+        if issubclass(exc_type, KeyboardInterrupt):
+            sys.__excepthook__(exc_type, exc_value, exc_traceback)
+            return
+        
+        error_logger.error(
+            "Uncaught exception",
+            exc_info=(exc_type, exc_value, exc_traceback),
+            extra={
+                "type": "uncaught_exception",
+                "exception_type": exc_type.__name__,
+            }
+        )
+    
+    sys.excepthook = exception_handler
+    
+    try:
+        app = build_ui()
+        # Gradio 6.0+ requires auth, theme, and css in launch()
+        launch_kwargs = {}
+        if hasattr(app, "_launch_auth") and app._launch_auth:
+            launch_kwargs["auth"] = app._launch_auth
+        if hasattr(app, "_launch_theme"):
+            launch_kwargs["theme"] = app._launch_theme
+        if hasattr(app, "_launch_css"):
+            launch_kwargs["css"] = app._launch_css
+        app.launch(**launch_kwargs)
+    except Exception as e:
+        log_error(error_logger, e, context={"function": "__main__", "stage": "app_launch"})
+        raise

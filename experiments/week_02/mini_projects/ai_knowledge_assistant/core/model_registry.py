@@ -6,6 +6,7 @@ All models with API keys are validated at startup.
 Invalid models are tracked and shown as disabled in UI.
 """
 
+import logging
 import os
 from dataclasses import dataclass
 from enum import Enum
@@ -15,6 +16,10 @@ from typing import Any, Dict, Generator, List, Optional, Tuple
 import requests
 import yaml
 from openai import OpenAI, AuthenticationError, APIConnectionError, RateLimitError
+
+from core.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class ModelStatus(Enum):
@@ -94,7 +99,7 @@ class ModelRegistry:
     def _load_config(self, config_path: str) -> None:
         """Load models from YAML config and validate all with keys."""
         if not Path(config_path).exists():
-            print(f"Warning: Config not found at {config_path}, using defaults.")
+            logger.warning(f"Config not found at {config_path}, using defaults.")
             self._register_defaults()
             return
 
@@ -103,7 +108,7 @@ class ModelRegistry:
 
         models_config = config.get("models", {})
         
-        print("\nValidating models...")
+        logger.info("Validating models...")
         for name, spec in models_config.items():
             self._register_and_validate(name, spec)
         
@@ -111,9 +116,9 @@ class ModelRegistry:
         total_configured = sum(1 for m in self.models.values() if m.status != ModelStatus.NOT_CONFIGURED)
         
         if ready_count == 0:
-            print("\nWARNING: No models available. Check your API keys in .env")
+            logger.warning("No models available. Check your API keys in .env")
         else:
-            print(f"\n{ready_count}/{total_configured} models ready")
+            logger.info(f"{ready_count}/{total_configured} models ready")
 
     def _register_and_validate(self, name: str, spec: Dict[str, Any]) -> None:
         """Register a model and validate its API key."""
@@ -203,31 +208,31 @@ class ModelRegistry:
         
         try:
             # Minimal validation call
-            response = entry.client.chat.completions.create(
+            entry.client.chat.completions.create(
                 model=entry.model,
                 messages=[{"role": "user", "content": "hi"}],
                 max_tokens=1,
             )
             entry.status = ModelStatus.READY
             entry.status_message = "Validated and ready"
-            print(f"  [OK] {entry.name}: Ready")
+            logger.info(f"{entry.name}: Ready", extra={"model": entry.name, "status": "ready"})
             
         except AuthenticationError as e:
             entry.status = ModelStatus.INVALID_KEY
             entry.status_message = "Invalid API key"
             entry.client = None  # Clear client for security
-            print(f"  [FAIL] {entry.name}: Invalid API key")
+            logger.warning(f"{entry.name}: Invalid API key", extra={"model": entry.name, "status": "invalid_key"})
             
         except RateLimitError as e:
             # Rate limited means key IS valid, just can't use right now
             entry.status = ModelStatus.RATE_LIMITED
             entry.status_message = "Rate limited - try again later"
-            print(f"  [WARN] {entry.name}: Rate limited (key is valid)")
+            logger.warning(f"{entry.name}: Rate limited (key is valid)", extra={"model": entry.name, "status": "rate_limited"})
             
         except APIConnectionError as e:
             entry.status = ModelStatus.CONNECTION_ERROR
             entry.status_message = "Cannot connect to API"
-            print(f"  [FAIL] {entry.name}: Connection error")
+            logger.error(f"{entry.name}: Connection error", extra={"model": entry.name, "status": "connection_error"})
             
         except Exception as e:
             error_str = str(e).lower()
@@ -236,25 +241,25 @@ class ModelRegistry:
             if "model" in error_str and ("not found" in error_str or "does not exist" in error_str):
                 entry.status = ModelStatus.MODEL_NOT_FOUND
                 entry.status_message = f"Model '{entry.model}' not available"
-                print(f"  [FAIL] {entry.name}: Model not found")
+                logger.warning(f"{entry.name}: Model not found", extra={"model": entry.name, "status": "model_not_found"})
             
             # Check for auth errors that might not be AuthenticationError
             elif "401" in error_str or "unauthorized" in error_str or "invalid" in error_str:
                 entry.status = ModelStatus.INVALID_KEY
                 entry.status_message = "Invalid API key"
                 entry.client = None
-                print(f"  [FAIL] {entry.name}: Invalid API key")
+                logger.warning(f"{entry.name}: Invalid API key", extra={"model": entry.name, "status": "invalid_key"})
             
             # Check for rate limit errors
             elif "429" in error_str or "rate" in error_str or "quota" in error_str:
                 entry.status = ModelStatus.RATE_LIMITED
                 entry.status_message = "Rate limited - try again later"
-                print(f"  [WARN] {entry.name}: Rate limited (key is valid)")
+                logger.warning(f"{entry.name}: Rate limited (key is valid)", extra={"model": entry.name, "status": "rate_limited"})
             
             else:
                 entry.status = ModelStatus.UNKNOWN_ERROR
                 entry.status_message = str(e)[:100]  # Truncate long errors
-                print(f"  [FAIL] {entry.name}: {entry.status_message}")
+                logger.error(f"{entry.name}: {entry.status_message}", extra={"model": entry.name, "status": "unknown_error", "error": str(e)[:200]})
 
     def _check_local_service(self, base_url: str, timeout: int = 2) -> bool:
         """Check if a local service is running."""
@@ -292,17 +297,24 @@ class ModelRegistry:
 
     def _log_status(self) -> None:
         """Log status summary at startup."""
-        print("\n" + "=" * 50)
-        print("MODEL REGISTRY STATUS")
-        print("=" * 50)
+        logger.info("Model Registry Status")
         for name, entry in self.models.items():
-            tag = {
-                ModelStatus.READY: "[OK]",
-                ModelStatus.RATE_LIMITED: "[WARN]",
-                ModelStatus.NOT_CONFIGURED: "[SKIP]",
-            }.get(entry.status, "[FAIL]")
-            print(f"  {tag} {name}: {entry.status_message}")
-        print("=" * 50 + "\n")
+            log_level = {
+                ModelStatus.READY: logging.INFO,
+                ModelStatus.RATE_LIMITED: logging.WARNING,
+                ModelStatus.CONNECTION_ERROR: logging.WARNING,
+                ModelStatus.INVALID_KEY: logging.WARNING,
+                ModelStatus.MODEL_NOT_FOUND: logging.WARNING,
+                ModelStatus.LOCAL_OFFLINE: logging.WARNING,
+                ModelStatus.NOT_CONFIGURED: logging.DEBUG,
+                ModelStatus.UNKNOWN_ERROR: logging.ERROR,
+            }.get(entry.status, logging.INFO)
+            
+            logger.log(
+                log_level,
+                f"{name}: {entry.status_message}",
+                extra={"model": name, "status": entry.status.value, "status_message": entry.status_message},
+            )
 
     def _get_fallback(self, exclude: str) -> Optional[str]:
         """Get the next available model for fallback."""
@@ -462,7 +474,14 @@ class ModelRegistry:
             kwargs["tools"] = tools
 
         try:
-            response = entry.client.chat.completions.create(**kwargs)
+            # Retry logic for API calls
+            from core.retry import retry_api_call
+            response = retry_api_call(
+                entry.client.chat.completions.create,
+                max_retries=3,
+                base_delay=1.0,
+                **kwargs
+            )
             return ChatResult(
                 success=True,
                 response=response,
@@ -507,10 +526,15 @@ class ModelRegistry:
                         yield from self.stream_chat(fallback, messages, allow_fallback=False)
                         return
                 yield f"[ERROR] {msg}"
-                return
+            return
 
         try:
-            stream = entry.client.chat.completions.create(
+            # Retry logic for streaming calls
+            from core.retry import retry_api_call
+            stream = retry_api_call(
+                entry.client.chat.completions.create,
+                max_retries=3,
+                base_delay=1.0,
                 model=entry.model,
                 messages=messages,
                 stream=True,
@@ -520,7 +544,7 @@ class ModelRegistry:
                     yield chunk.choices[0].delta.content
                     
         except Exception as e:
-            error_type, error_msg = self._classify_error(e)
+            _, error_msg = self._classify_error(e)
             
             if allow_fallback:
                 fallback = self._get_fallback(model_name)

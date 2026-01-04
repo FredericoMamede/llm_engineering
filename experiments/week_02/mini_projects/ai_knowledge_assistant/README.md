@@ -49,26 +49,43 @@ experiments/week_02/mini_projects/
 ai_knowledge_assistant/
 ├── README.md                # This document
 ├── app.py                   # Gradio entrypoint (driver)
+├── requirements.txt         # Python dependencies
 ├── core/
+│   ├── __init__.py          # Core module exports
 │   ├── orchestrator.py      # Input → prompt → tools → response
 │   ├── prompt_profiles.py   # System + task profiles (YAML-backed)
 │   ├── model_registry.py    # Multi-model abstraction (config-driven, all providers)
 │   ├── session_store.py     # SQLite persistence (sessions, history)
-│   └── auth.py              # Simple username/password authentication
+│   ├── auth.py              # Simple username/password authentication
+│   ├── prompt_injection.py  # Prompt injection detection & protection
+│   ├── rate_limiter.py     # Per-session rate limiting (token bucket)
+│   ├── retry.py             # Retry logic with exponential backoff
+│   ├── context_manager.py   # Context window management & token counting
+│   ├── logger.py            # Structured JSON logging with rotation
+│   └── models.yaml          # Model configuration (8 providers)
 ├── tools/
+│   ├── __init__.py          # Tool registry
 │   ├── explain_error.py     # Traceback/log parsing
 │   ├── review_code.py       # Quick/deep review modes
 │   └── summarize_text.py    # Docs/URL summarization
 ├── io/
+│   ├── __init__.py          # IO module exports
 │   ├── audio.py             # Whisper STT + TTS wrappers
 │   └── loaders.py           # Text/file/URL ingestion + cleaning
 ├── prompts/
 │   ├── base.yaml            # Base system + shared snippets
 │   └── profiles.yaml        # Concise/Teaching/Reviewer profiles
 ├── data/
-│   └── sessions.db          # Created at runtime (gitignored)
-└── experiments/
-    └── prompt_comparison.ipynb # Side-by-side runs for profiles/models
+│   ├── sessions.db          # SQLite database (created at runtime)
+│   ├── logs/
+│   │   ├── app.log          # Application logs (JSON format)
+│   │   ├── errors.log       # Error logs only
+│   │   └── access.log       # Access/activity logs
+│   └── audio/               # Generated TTS files
+├── experiments/
+│   └── prompt_comparison.ipynb # Side-by-side runs for profiles/models (✅ Working)
+├── TESTING_GUIDE.md         # Comprehensive testing procedures
+└── COMPREHENSIVE_AUDIT.md   # Security & feature audit
 ```
 
 ## Implementation Plan (2-day cadence)
@@ -97,12 +114,27 @@ ai_knowledge_assistant/
 
 ## Setup
 1) Python 3.10+ and `pip install -r requirements.txt` (reuse course env).
-2) Environment: `.env` with `OPENAI_API_KEY`; Ollama optional (`ollama serve` + `ollama pull llama3.2`).
-3) **Authentication (REQUIRED by default)**: Set `USER=your_username` and `PASSWORD=your_password` in `.env`.
+2) **Playwright (Optional but Recommended)**: For JavaScript website support, install Playwright browsers:
+   ```bash
+   pip install playwright
+   playwright install chromium
+   ```
+   - If Playwright is not installed, URL loader will work for static sites only
+   - With Playwright, automatically handles JavaScript-rendered sites (React, Vue, Angular, SPAs)
+3) Environment: `.env` with `OPENAI_API_KEY`; Ollama optional (`ollama serve` + `ollama pull llama3.2`).
+4) **Authentication (REQUIRED by default)**: Set `USER=your_username` and `PASSWORD=your_password` in `.env`.
    - **For development only**: Set `DISABLE_AUTH=true` to disable authentication.
    - **Security**: Auth is enabled by default (secure by default). App will not start without credentials unless explicitly disabled.
-4) **Additional Models**: Add API keys for DeepSeek, Anthropic, Gemini, Groq, Together AI, Mistral in `.env` (see `core/models.yaml` for required keys).
-5) Run: `python app.py` (from repo root or project folder).
+5) **Additional Models**: Add API keys for DeepSeek, Anthropic, Gemini, Groq, Together AI, Mistral in `.env` (see `core/models.yaml` for required keys).
+5) **Optional Configuration**:
+   - `LOG_LEVEL` - Logging level (DEBUG, INFO, WARN, ERROR, default: INFO)
+   - `ENABLE_FILE_LOGGING` - Enable file logging (true/false, default: true)
+   - `RATE_LIMIT_REQUESTS_PER_MIN` - Requests per minute limit (default: 60)
+   - `RATE_LIMIT_TOKENS_PER_HOUR` - Tokens per hour limit (default: 100000)
+   - `RATE_LIMIT_COST_PER_HOUR` - Cost limit per hour in USD (default: 10.0)
+   - `MAX_CONTEXT_TOKENS` - Maximum context window tokens (default: 8000)
+   - `CONTEXT_STRATEGY` - Truncation strategy: "truncate" (default) or "summarize"
+6) Run: `python app.py` (from repo root or project folder).
 
 ## Non-Goals (intentionally out of scope for Weeks 1–2)
 - Multi-user auth, user accounts, teams/roles (simple username/password implemented).
@@ -125,10 +157,14 @@ ai_knowledge_assistant/
   - File size limits (10MB maximum)
   - Extension whitelist validation
   - Encoding error handling
-- **URL Loading**:
+- **URL Loading** (Hybrid Approach):
+  - **Static First**: Fast requests + BeautifulSoup for static HTML pages
+  - **JavaScript Fallback**: Automatic Playwright fallback for JS-rendered sites (React, Vue, Angular, SPAs)
+  - **Smart Detection**: Automatically detects when JavaScript is needed
   - URL format validation
   - SSRF protection (blocks localhost/private IPs)
-  - Proper URL parsing and timeout handling (10s default)
+  - Proper URL parsing and timeout handling (10s default for static, 30s for Playwright)
+  - **Supports All Websites**: Works for both static and modern JavaScript-heavy sites
 - **Audio Input**:
   - Sample rate validation
   - Duration and amplitude checks
@@ -141,9 +177,39 @@ ai_knowledge_assistant/
 
 ### Error Handling & Resilience
 - **Model Failures**: Automatic fallback to alternative models
+- **Retry Logic**: Exponential backoff with jitter for transient errors (3 retries, configurable)
 - **API Errors**: Specific error types (invalid_key, rate_limited, connection_error, etc.)
 - **Graceful Degradation**: App continues functioning even if components fail
 - **User-Friendly Messages**: Clear, actionable error messages
+
+### Rate Limiting
+- **Per-Session Limits**: Requests per minute, tokens per hour, cost per hour
+- **Token Bucket Algorithm**: Fair rate limiting with automatic refill
+- **Configurable**: Limits configurable via environment variables
+- **Cost Control**: Prevents cost overruns with per-hour cost limits
+- **Automatic Tracking**: Token and cost usage tracked automatically
+
+### Context Window Management
+- **Token Counting**: Accurate token counting using tiktoken (with fallback)
+- **Automatic Truncation**: Truncates history when context window exceeded
+- **Smart Truncation**: Keeps most recent messages, removes oldest
+- **Configurable Limits**: Max tokens and strategy configurable via environment variables
+- **Context Info Logging**: Logs context window utilization for monitoring
+
+### Prompt Injection Protection
+- **Pattern Detection**: Detects 15+ common prompt injection patterns
+- **Input Sanitization**: Escapes and sanitizes user input automatically
+- **System Prompt Isolation**: Clear boundaries between system and user prompts
+- **Input Validation**: Validates input length and suspicious patterns
+- **Security Logging**: Logs injection attempts for security monitoring
+
+### Structured Logging
+- **JSON Format**: Structured JSON logs for easy parsing and analysis
+- **File Rotation**: Automatic log rotation (10MB files, 5 backups)
+- **Multiple Log Files**: Separate logs for app, errors, and access
+- **PII Sanitization**: Automatically redacts API keys and sensitive data
+- **Performance Metrics**: Logs latency, token usage, and operation metrics
+- **Configurable Levels**: DEBUG, INFO, WARN, ERROR levels
 
 ### Model Registry
 - **Multi-Provider Support**: GPT, Ollama, DeepSeek, Anthropic, Gemini, Groq, Together AI, Mistral
@@ -164,23 +230,30 @@ This project is **production-ready** for:
 ✅ Path traversal protection  
 ✅ SSRF protection  
 ✅ Input validation (files, URLs, audio)  
-✅ Authentication (optional, simple)  
+✅ Authentication (secure by default)  
+✅ Prompt injection protection  
 ✅ Error handling and fallback mechanisms  
+✅ Retry logic with exponential backoff  
+✅ Rate limiting (requests, tokens, cost)  
+✅ Context window management  
+✅ Structured logging with PII sanitization  
 ✅ Professional code quality (no emojis in code, clear comments)
 
 ### Recommended for Large-Scale Production
 1. **Replace simple auth** with OAuth/JWT for multi-user scenarios
-2. **Add rate limiting** per user/session
-3. **Implement structured logging** (files/cloud)
-4. **Add monitoring** (health checks, metrics)
-5. **Database backups** for session data
-6. **HTTPS/TLS** for all connections
-7. **Environment-specific configs** (dev/staging/prod)
+2. **Add monitoring** (health checks, metrics, alerting)
+3. **Database backups** for session data
+4. **HTTPS/TLS** for all connections
+5. **Environment-specific configs** (dev/staging/prod)
+6. **Distributed rate limiting** (Redis-based for multi-instance)
+7. **Advanced context management** (conversation summarization)
+
 
 ## Notes
 - Keep comments professional and scarce; explain "why" when non-obvious.
 - Measure token usage and latency where possible; surface in UI or logs.
 - Favor small, composable functions; keep orchestration explicit.
 - All Week 1-2 features implemented and tested.
+- All production features (logging, retry, rate limiting, context management, injection protection) fully implemented.
 
 
