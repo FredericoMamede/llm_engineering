@@ -249,5 +249,131 @@ result = my_pipeline(input)
 
 ---
 
+---
+
+## Day 3: Tokenizers
+
+### Goal of Day 3
+
+Day 3 explores the world of Tokenizers - the crucial bridge between human-readable text and the numerical inputs that LLMs actually process. This day reveals the "missing piece" that connects high-level APIs to model internals.
+
+---
+
+### Basic Tokenization Process
+
+**Finding:** Tokenization converts text to numerical inputs that LLMs can process
+- Process: Text → Tokens → Token IDs
+- Character count ≠ Word count ≠ Token count
+- Tokens are fragments of words, not always whole words
+- Different tokenizers produce different tokenizations for the same text
+
+**Key Insight:** Understanding tokenization is essential for debugging model behavior and understanding token limits
+
+**Recommendation:** Always verify token counts, not character/word counts when working with token limits
+
+---
+
+### Vocabulary and Token Mapping
+
+**Finding:** Each tokenizer has a vocabulary mapping tokens to numerical IDs
+- Vocabulary size varies by model
+- Special tokens are added to vocabulary
+- Can inspect vocabulary to understand token structure
+
+**Key Insight:** Vocabulary is the bridge between human-readable tokens and numerical IDs
+
+**Recommendation:** Inspect vocabularies when debugging tokenization issues
+
+---
+
+### Decoding Tokens
+
+**Finding:** Token IDs can be decoded back to text for verification
+- `decode()` converts token IDs back to text
+- Round-trip verification: text → tokens → token IDs → text
+- Useful for debugging and understanding model outputs
+
+**Key Insight:** Decoding is the reverse of encoding - allows verification of tokenization
+
+**Recommendation:** Use decode() to verify tokenization round-trips correctly
+
+---
+
+### Instruct Variants and Chat Templates
+
+**Finding:** Instruct models require specific prompt formats via chat templates
+- `apply_chat_template()` converts messages format to model-specific prompts
+- Different models have different chat template formats
+- Chat templates add special tokens for system/user/assistant roles
+
+**Key Insight:** Chat templates are model-specific - can't assume one format works for all models
+
+**Recommendation:** Always use `apply_chat_template()` for Instruct models, don't manually format prompts
+
+---
+
+### The Crucial "Aha" Moment
+
+**Finding:** LLMs take Token IDs as input, not Python objects
+- Messages format (list of dicts) is converted to token IDs
+- Process: Messages → Text with tags → Tokens → Token IDs
+- Output is probability distribution of next Token ID
+- This is the missing piece connecting high-level APIs to model internals
+
+**Key Insight:** This revelation connects everything - explains how high-level APIs work under the hood
+
+**Recommendation:** Internalize this understanding - it's foundational for working with LLMs
+
+---
+
+### Multiple Models Comparison
+
+**Finding:** Different models use different tokenizers with different behaviors
+- Same text produces different token IDs across models
+- Each model has different tokenization behavior and chat templates
+
+**Models Explored:**
+- **Llama 3.1:** (industry-standard; see access notes below)
+- **Phi-4:** Microsoft's model
+- **DeepSeek 3.1:** DeepSeek AI model
+- **QwenCoder 2.5:** Alibaba Cloud's code-specific model
+
+**Key Insight:** Can't assume tokenization is consistent across models - each has its own behavior
+
+**Recommendation:** Test tokenization with your specific model before production use
+
+---
+
+### Llama 3.1 Access (Meta)
+
+**Finding:** Llama 3.1 requires Meta approval but is commonly used in industry
+- Must sign Meta's terms of service
+- Approval usually comes in a couple of minutes
+- Approval applies to whole 3.1 family
+- **Important:** Llama 3.1 is commonly used in industry, which is why it's included in the course
+
+**Key Insight:** Industry relevance justifies the approval process
+
+**Recommendation:** Complete Meta approval early - it's quick and unlocks industry-standard models
+
+---
+
+### CPU vs GPU Requirements
+
+**Finding:** Tokenization can run on CPU, no GPU needed
+- Tokenizers are CPU-friendly
+- Tokenization is fast even on CPU
+- GPU verification is useful but not required
+
+**Key Insight:** Tokenization and model inference have different hardware requirements
+
+**Recommendation:** Use CPU for tokenization, GPU for model inference
+
+**Tradeoff:**
+- **CPU:** Accessible, no GPU needed, sufficient for tokenization
+- **GPU:** Required for fast model inference, but not needed for tokenization
+
+---
+
 ## Upcoming Days
-> Observations for Days 3–5 will be added incrementally.
+> Observations for Days 4–5 will be added incrementally.

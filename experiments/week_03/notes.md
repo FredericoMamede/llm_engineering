@@ -583,7 +583,233 @@ pipeline("sentiment-analysis", model="nlptown/bert-base-multilingual-uncased-sen
 ---
 
 ## Day 3: Tokenizers
-> 🚧 To be completed after Day 3 experiments
+
+### Goal of Day 3
+
+Day 3 explores the world of Tokenizers - the crucial bridge between human-readable text and the numerical inputs that LLMs actually process. This day reveals the "missing piece" that connects high-level APIs to model internals.
+
+---
+
+### Basic Tokenization Process
+
+**Problem:** Need to convert human-readable text into numerical inputs for LLMs
+
+**Solution:** Use tokenizers to convert text → tokens → token IDs
+
+**How It Works:**
+1. **Text:** Human-readable string
+2. **Tokens:** Fragments of words (not always whole words)
+3. **Token IDs:** Numerical IDs that map to tokens in vocabulary
+
+**Code Used:**
+```python
+from transformers import AutoTokenizer
+
+tokenizer = AutoTokenizer.from_pretrained('meta-llama/Meta-Llama-3.1-8B', trust_remote_code=True)
+text = "I am excited to show Tokenizers in action to my LLM engineers"
+tokens = tokenizer.encode(text)  # Returns list of token IDs
+```
+
+**Key Learning:**
+- Character count ≠ Word count ≠ Token count
+- Tokens are fragments of words, not always whole words
+- Different tokenizers produce different tokenizations for the same text
+- **Pattern:** `tokenizer.encode(text)` → list of token IDs
+
+**Example:**
+- Text: "I am excited to show Tokenizers in action to my LLM engineers"
+- Characters: ~70
+- Words: ~12
+- Tokens: ~15-20 (varies by tokenizer)
+
+---
+
+### Vocabulary and Token Mapping
+
+**Problem:** Understand how tokens map to numerical IDs
+
+**Solution:** Explore tokenizer vocabularies
+
+**What's Shown:**
+- Each tokenizer has a vocabulary (mapping of tokens to IDs)
+- Vocabulary size varies by model
+- Special tokens are added to vocabulary
+
+**Code Used:**
+```python
+tokenizer.get_added_vocab()  # Special tokens
+len(tokenizer.vocab)  # Vocabulary size
+```
+
+**Key Learning:**
+- Vocabulary is the mapping between tokens and their numerical IDs
+- Special tokens (like `<|system|>`, `<|user|>`, `<|assistant|>`) are added to vocabulary
+- Vocabulary size is a model hyperparameter
+
+---
+
+### Decoding Tokens
+
+**Problem:** Convert token IDs back to text for verification
+
+**Solution:** Use `decode()` and `batch_decode()` methods
+
+**Code Used:**
+```python
+tokenizer.decode(tokens)  # Single sequence
+tokenizer.batch_decode(tokens)  # Multiple sequences
+```
+
+**Key Learning:**
+- `decode()` converts token IDs back to text
+- `batch_decode()` can decode multiple sequences
+- Round-trip: text → tokens → token IDs → text (should match original)
+- Useful for debugging and verification
+
+**Pattern:** Token IDs → Decode → Original text (verification)
+
+---
+
+### Instruct Variants and Chat Templates
+
+**Problem:** Many models have Instruct variants that expect specific prompt formats
+
+**Solution:** Use `apply_chat_template()` to convert messages format to model-specific prompts
+
+**What's Shown:**
+- Instruct models are trained for chat/conversation
+- They expect prompts with system, user, and assistant roles
+- Each model has its own chat template format
+
+**Code Used:**
+```python
+tokenizer = AutoTokenizer.from_pretrained('meta-llama/Meta-Llama-3.1-8B-Instruct', trust_remote_code=True)
+
+messages = [
+    {"role": "system", "content": "You are a helpful assistant"},
+    {"role": "user", "content": "Tell a light-hearted joke for a room of Data Scientists"}
+]
+
+prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+```
+
+**Key Learning:**
+- `apply_chat_template()` converts messages format to model-specific prompts
+- Different models have different chat template formats
+- Chat templates add special tokens for system/user/assistant roles
+- **Pattern:** Messages (list of dicts) → Chat template → Model-specific prompt
+
+**Tradeoff:**
+- **Messages format:** Easy to use, but model-specific
+- **Chat templates:** Handles conversion automatically
+
+---
+
+### The Crucial "Aha" Moment
+
+**Problem:** Understanding how high-level APIs (messages format) connect to model internals
+
+**Solution:** Realize that LLMs take Token IDs as input, not Python objects
+
+**The Revelation:**
+For 2.5 weeks, we've been using messages format (list of Python dictionaries):
+```python
+messages = [
+    {"role": "system", "content": "You are a helpful assistant"},
+    {"role": "user", "content": "Tell a light-hearted joke for a room of Data Scientists"}
+]
+```
+
+**But an LLM is just a Data Science model that takes a sequence of numbers and predicts the probability of the next number! You can't pass a bunch of Python objects into a statistical model!**
+
+**The Missing Piece:**
+1. The messages in OpenAI format get converted:
+   - ...into a sequence of words with special tags to separate the System, User, Assistant prompt
+2. Then the words are broken down into fragments - "tokens"
+3. Then the tokens are replaced with Token IDs - and this is the input sequence
+
+**The Input to an LLM is a sequence of Token IDs. The output is the probability distribution of the next Token ID to follow this input.**
+
+**Key Learning:**
+- **LLMs take Token IDs as input, not Python objects**
+- Messages format (list of dicts) is converted to token IDs
+- Process: Messages → Text with tags → Tokens → Token IDs
+- Output is probability distribution of next Token ID
+- This is the missing piece connecting high-level APIs to model internals
+
+**Pattern:** High-level API (messages) → Tokenization → Token IDs → Model → Probability distribution → Next token
+
+---
+
+### Multiple Models Comparison
+
+**Problem:** Different models use different tokenizers with different behaviors
+
+**Solution:** Compare tokenization across multiple models (Llama 3.1, Phi-4, DeepSeek, QwenCoder)
+
+**What's Shown:**
+- **Llama 3.1** (industry-common; see access notes below)
+- **Phi-4** from Microsoft
+- **DeepSeek 3.1** from DeepSeek AI
+- **QwenCoder 2.5** from Alibaba Cloud (code-specific)
+
+**Code Used (Example for Phi-4):**
+```python
+PHI4 = "microsoft/Phi-4-mini-instruct"
+phi4_tokenizer = AutoTokenizer.from_pretrained(PHI4)
+text = "I am curiously excited to show Hugging Face Tokenizers in action to my LLM engineers"
+tokens = phi4_tokenizer.encode(text)
+print(tokens)
+print(phi4_tokenizer.batch_decode(tokens))
+```
+
+**Key Learning:**
+- Same text produces different token IDs across models
+- Each model has different tokenization behavior and chat template formats
+- Code-specific models optimize tokenization for code
+
+**Pattern:** Same text → Different tokenizers → Different token IDs → Different model behavior
+
+**Tradeoff:**
+- **Model-specific tokenizers:** Optimized for that model, but can't assume consistency
+- **Universal tokenizer:** Would be convenient, but models are trained with specific tokenizers
+
+---
+
+### Llama 3.1 Access (Meta)
+
+**Problem:** Some models require approval before use (e.g., Llama 3.1)
+
+**Solution:** Follow Meta's terms of service agreement process
+
+**Key Requirements:**
+- Visit model page on Hugging Face: https://huggingface.co/meta-llama/Meta-Llama-3.1-8B
+- Agree to terms of service (use same email as HF account if possible)
+- Approval usually takes a few minutes
+- Approval applies to the whole 3.1 family of models
+
+**Key Learning:**
+- Llama 3.1 is commonly used in industry, which is why it's included in this course
+- Requires explicit approval from Meta
+- Troubleshooting steps available if access is denied
+
+---
+
+### CPU vs GPU Requirements
+
+**Problem:** Understanding hardware requirements for tokenization vs. model inference
+
+**Solution:** Recognize that tokenization is CPU-friendly, while inference is GPU-accelerated
+
+**Key Insight:**
+- **Tokenization = CPU-friendly** (can run locally without GPU)
+- **Model inference = GPU-accelerated** (needs GPU for speed)
+
+**Pattern:** Tokenization (CPU) → Model inference (GPU)
+
+**Tradeoff:**
+- **CPU:** Accessible, no GPU needed, slower for model inference
+- **GPU:** Faster for model inference, but requires GPU access
 
 ---
 

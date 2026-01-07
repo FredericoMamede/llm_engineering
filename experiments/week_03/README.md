@@ -15,6 +15,7 @@ This is a **learning lab**, not a portfolio project. Experiments here are:
 ## Structure
 
 ```
+
 experiments/week_03/
 ├── notebooks/
 │   ├── 01_colab_setup.ipynb              # Day 1: Google Colab introduction
@@ -32,11 +33,14 @@ experiments/week_03/
 └── notes.md                              # Detailed patterns and code examples
 ```
 
+---
+
 ## Day 1: Google Colab Setup
 
 ### Goal of Day 1
 
 Day 1 is **not about theory**. It's about **environment, hardware, and intuition**:
+
 > *"What can I do when I have real GPU compute, even on a small budget?"*
 
 This day deliberately shows off capabilities, builds confidence, sets expectations for Colab realities, and motivates the rest of Week 3.
@@ -166,7 +170,7 @@ This day deliberately shows off capabilities, builds confidence, sets expectatio
 
 ### Goal of Day 2
 
-Day 2 introduces the **High-Level Pipeline API** - the simplest way to use pre-trained models for common inference tasks without worrying about model internals.
+Day 2 introduces the **High-Level Pipeline API** – the simplest way to use pre-trained models for common inference tasks without worrying about model internals.
 
 ### What I'm Testing
 
@@ -254,7 +258,127 @@ Day 2 introduces the **High-Level Pipeline API** - the simplest way to use pre-t
 ---
 
 ## Day 3: Tokenizers
-> 🚧 To be completed after Day 3 experiments
+
+### Goal of Day 3
+
+Day 3 explores the world of Tokenizers - the crucial bridge between human-readable text and the numerical inputs that LLMs actually process. This day reveals the "missing piece" that connects high-level APIs to model internals.
+
+### What I'm Testing
+
+#### 1. Basic Tokenization Process
+**What:** Understand how text is converted to tokens and token IDs
+
+**Why:**
+- Foundation for understanding how LLMs process input
+- Essential for debugging model behavior
+- Critical for understanding token limits
+
+**What I learned:**
+- Tokenization process: Text → Tokens → Token IDs
+- Character count ≠ Word count ≠ Token count
+- Tokens are fragments of words, not always whole words
+- Different tokenizers produce different tokenizations for the same text
+- **Pattern:** `tokenizer.encode(text)` → list of token IDs
+
+#### 2. Vocabulary and Token Mapping
+**What:** Explore tokenizer vocabularies and token-to-ID mappings
+
+**Why:**
+- Understand how tokens map to numerical IDs
+- Learn about vocabulary size and special tokens
+- Foundation for understanding model inputs
+
+**What I learned:**
+- Each tokenizer has a vocabulary (mapping of tokens to IDs)
+- Vocabulary size varies by model
+- Special tokens are added to vocabulary
+- Can inspect vocabulary with `tokenizer.vocab` and `tokenizer.get_added_vocab()`
+
+#### 3. Decoding Tokens
+**What:** Convert token IDs back to text
+
+**Why:**
+- Verify tokenization round-trip
+- Understand model outputs
+- Debug tokenization issues
+
+**What I learned:**
+- `decode()` converts token IDs back to text
+- `batch_decode()` can decode multiple sequences
+- Round-trip: text → tokens → token IDs → text (should match original)
+
+#### 4. Instruct Variants and Chat Templates
+**What:** Understand how chat/conversation models format prompts
+
+**Why:**
+- Many models have Instruct variants for chat
+- Need to format messages correctly for each model
+- Foundation for building chat applications
+
+**What I learned:**
+- Instruct models are trained for chat/conversation
+- `apply_chat_template()` converts messages format to model-specific prompts
+- Different models have different chat template formats
+- Chat templates add special tokens for system/user/assistant roles
+- **Pattern:** Messages (list of dicts) → Chat template → Model-specific prompt
+
+#### 5. The Crucial "Aha" Moment
+**What:** Understand that LLMs take Token IDs as input, not Python objects
+
+**Why:**
+- This is the missing piece connecting high-level APIs to model internals
+- Explains how messages format gets converted to model inputs
+- Foundation for understanding model architecture
+
+**What I learned:**
+- **LLMs take Token IDs as input, not Python objects**
+- Messages format (list of dicts) is converted to token IDs
+- Process: Messages → Text with tags → Tokens → Token IDs
+- Output is probability distribution of next Token ID
+- **This is the missing piece** - LLMs are statistical models that predict next token
+
+#### 6. Multiple Models Comparison
+**What:** Compare tokenization across different models
+
+**Why:**
+- Different models use different tokenizers
+- Understanding differences helps choose the right model
+- See how tokenization affects model behavior
+
+**What I learned:**
+- **Llama 3.1:** Commonly used in industry (why it's in the course), requires Meta approval
+- **Phi-4:** Microsoft's model
+- **DeepSeek 3.1:** DeepSeek AI model
+- **QwenCoder 2.5:** Alibaba Cloud's code-specific model
+- Each has different tokenization behavior and chat templates
+- Same text produces different token IDs across models
+
+#### 7. Llama 3.1 Access (Meta)
+**What:** Set up access to Llama 3.1 from Meta
+
+**Why:**
+- Requires special approval process (see Multiple Models Comparison section for industry relevance)
+- Important for real-world applications
+
+**What I learned:**
+- Must sign Meta's terms of service
+- Approval usually comes in a couple of minutes
+- Approval applies to whole 3.1 family of models
+- Troubleshooting steps if access is denied
+
+#### 8. CPU vs GPU Requirements
+**What:** Understand that tokenizers can run on CPU
+
+**Why:**
+- Tokenization doesn't require GPU
+- Can run locally without GPU hardware
+- More accessible for experimentation
+
+**What I learned:**
+- Can run tokenizers on CPU (no GPU needed)
+- Tokenization is fast even on CPU
+- GPU verification is still useful but not required
+- **Pattern:** Tokenization = CPU-friendly, Model inference = GPU-accelerated
 
 ---
 
@@ -328,4 +452,3 @@ See `results/week3_observations.md` for:
 - HuggingFace Hub: https://huggingface.co/models
 - Google Colab: https://colab.research.google.com
 - Transformers Library: https://github.com/huggingface/transformers
-
