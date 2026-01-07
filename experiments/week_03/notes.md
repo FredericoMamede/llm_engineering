@@ -1,5 +1,8 @@
 # Week 3 Learning Notes
 
+> This file accumulates learning notes incrementally.  
+> Each section reflects understanding at the end of that day.
+
 ## Overview
 
 Bullet-point insights from Week 3 experiments. Focus on **why** things work, not just **what** works.
@@ -327,7 +330,255 @@ pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-schnell", torch_dt
 ---
 
 ## Day 2: HuggingFace Pipelines
-> 🚧 To be completed after Day 2 experiments
+
+### Goal of Day 2
+
+Day 2 introduces the **High-Level Pipeline API** - the simplest way to use pre-trained models for common inference tasks without worrying about model internals.
+
+---
+
+### High-Level Pipeline API
+
+**Problem:** Want to use pre-trained models without understanding internals
+
+**Solution:** Use HuggingFace `pipeline()` function
+
+**How It Works:**
+- **Step 1:** Create a pipeline - a function you can then call
+  ```python
+  my_pipeline = pipeline(task, model=xx, device=xx)
+  ```
+- **Step 2:** Call it as many times as you want
+  ```python
+  my_pipeline(input1)
+  my_pipeline(input2)
+  ```
+
+**Key Points:**
+- If you don't specify a model, HuggingFace picks a default for the task
+- Specify `device="cuda"` for NVIDIA GPU (T4)
+- Specify `device="mps"` on Mac
+- Pipelines handle all the plumbing (tokenization, model loading, etc.)
+
+**Pattern:** Create once → Call many times
+
+**Tradeoff:**
+- **Pipelines:** Easy to use, but less control
+- **Manual inference:** More control, but more code
+
+---
+
+### Training vs Inference Distinction
+
+**Problem:** Need to understand when to use pipelines vs lower-level APIs
+
+**Solution:** Understand the fundamental difference between training and inference
+
+**Training:**
+- Model learns from data
+- Updates internal settings (parameters/weights)
+- Makes model better at task in the future
+- **Fine-tuning:** Training a model that's already been trained
+
+**Inference:**
+- Using a model that has already been trained
+- Producing new outputs on new inputs
+- Taking advantage of what model learned during training
+- Also called "Execution" or "Running a model"
+
+**Key Learning:**
+- Pipelines API is **only for inference** (using pre-trained models)
+- All API usage (GPT, Claude, Gemini) from previous weeks = inference
+- Week 7 will cover training - need lower-level APIs then
+- "P" in GPT = "Pre-trained" (already trained with lots of data)
+
+**Pattern:** Pipelines = Inference only, Lower-level APIs = Training + Inference
+
+---
+
+### Pipeline Tasks Explored
+
+**Problem:** Want to understand what tasks pipelines can handle
+
+**Solution:** Explore multiple pipeline tasks to see breadth of capabilities
+
+#### 1. Sentiment Analysis
+```python
+my_simple_sentiment_analyzer = pipeline("sentiment-analysis", device="cuda")
+result = my_simple_sentiment_analyzer("I'm super excited to be on the way to LLM mastery!")
+```
+
+**Key Learning:**
+- Can specify better models (e.g., multilingual sentiment model)
+- Returns label and confidence score
+- **Pattern:** Default model → Try specific model if needed
+
+#### 2. Named Entity Recognition (NER)
+```python
+ner = pipeline("ner", device="cuda")
+result = ner("AI Engineers are learning about the amazing pipelines from HuggingFace in Google Colab from Ed Donner")
+```
+
+**Key Learning:**
+- Extracts entities (people, places, organizations, etc.)
+- Returns list of entities with labels and scores
+- Useful for information extraction
+
+#### 3. Question Answering
+```python
+question_answerer = pipeline("question-answering", device="cuda")
+result = question_answerer(question="What are Hugging Face pipelines?", context="...")
+```
+
+**Key Learning:**
+- Requires both question and context
+- Extracts answer from context
+- Returns answer with confidence score
+
+#### 4. Text Summarization
+```python
+summarizer = pipeline("summarization", device="cuda")
+summary = summarizer(text, max_length=50, min_length=25, do_sample=False)
+```
+
+**Key Learning:**
+- Can control summary length with `max_length` and `min_length`
+- `do_sample=False` for deterministic output
+- Returns summary text
+
+#### 5. Translation
+```python
+translator = pipeline("translation_en_to_fr", device="cuda")
+result = translator("The Data Scientists were truly amazed...")
+```
+
+**Key Learning:**
+- Task name includes language pair (e.g., `translation_en_to_fr`)
+- Can specify custom models for different language pairs
+- All translation models available on HuggingFace Hub
+
+#### 6. Zero-shot Classification
+```python
+classifier = pipeline("zero-shot-classification", device="cuda")
+result = classifier("Hugging Face's Transformers library is amazing!", 
+                    candidate_labels=["technology", "sports", "politics"])
+```
+
+**Key Learning:**
+- Classify text without training examples
+- Provide candidate labels at inference time
+- Returns labels with scores
+
+#### 7. Text Generation
+```python
+generator = pipeline("text-generation", device="cuda")
+result = generator("If there's one thing I want you to remember about using HuggingFace pipelines, it's")
+```
+
+**Key Learning:**
+- Generates continuation of input text
+- Can control length, temperature, etc.
+- Returns generated text
+
+#### 8. Image Generation (Diffusers)
+```python
+from diffusers import AutoPipelineForText2Image
+pipe = AutoPipelineForText2Image.from_pretrained("stabilityai/sdxl-turbo", torch_dtype=torch.float16, variant="fp16")
+pipe.to("cuda")
+image = pipe(prompt=prompt, num_inference_steps=4, guidance_scale=0.0).images[0]
+```
+
+**Key Learning:**
+- Pipelines work with Diffusers library too (not just Transformers)
+- Same concept: high-level API for image generation
+- **Note:** This was also shown in Day 1, but now explained as part of pipelines ecosystem
+
+#### 9. Audio Generation (Text-to-Speech)
+```python
+synthesiser = pipeline("text-to-speech", "microsoft/speecht5_tts", device='cuda')
+speech = synthesiser("Hi to an artificial intelligence engineer, on the way to mastery!", 
+                     forward_params={"speaker_embeddings": speaker_embedding})
+```
+
+**Key Learning:**
+- Pipelines support audio tasks too
+- Can use speaker embeddings for voice consistency
+- Returns audio that can be played directly
+- **Note:** This was also shown in Day 1, but now explained as part of pipelines ecosystem
+
+**Key Insight:** Same simple API pattern works across all tasks - just change the task name
+
+**Pattern:** `pipeline(task_name, model=optional, device="cuda")` → `pipeline(input)`
+
+---
+
+### Model Selection in Pipelines
+
+**Problem:** Default models may not be best for your use case
+
+**Solution:** Specify custom models or use defaults
+
+**Default Behavior:**
+- If no model specified, HuggingFace picks default for the task
+- Defaults are usually good starting points
+- May not be optimal for specific use cases
+
+**Custom Models:**
+```python
+# Use default
+pipeline("sentiment-analysis", device="cuda")
+
+# Use specific model
+pipeline("sentiment-analysis", model="nlptown/bert-base-multilingual-uncased-sentiment", device="cuda")
+```
+
+**Key Learning:**
+- Different models have different strengths
+- Multilingual models for international text
+- Larger models often better quality but slower
+- **Pattern:** Start with default → Try specific models if needed
+
+**Tradeoff:**
+- **Default models:** Easy, but may not be optimal
+- **Custom models:** Better results, but need to know which to choose
+
+---
+
+### Colab Pro-Tips (Day 2 Specific)
+
+**Problem:** Colab has quirks that can be confusing
+
+**Solution:** Learn specific troubleshooting tips
+
+#### Pro-Tip 1: Warnings Can Be Ignored
+- Data Science code often gives warnings and messages
+- Can mostly be safely ignored
+- Glance over them, but don't worry unless something breaks
+- If something goes wrong later, warnings might give clues
+
+#### Pro-Tip 2: Misleading CUDA Errors
+**The Problem:**
+- Error: "CUDA is required but not available for bitsandbytes"
+- This is **super-misleading**!
+- Don't try changing package versions
+
+**The Real Issue:**
+- Google switched out your Colab runtime (too busy)
+- Runtime downgraded from GPU to CPU
+
+**The Solution:**
+1. `Kernel menu → Disconnect and delete runtime`
+2. `Edit menu → Clear All Outputs`
+3. Connect to new T4 using button at top right
+4. Select "View resources" to confirm GPU
+5. Rerun cells from top down, starting with pip installs
+
+**Key Learning:**
+- CUDA errors often mean runtime switch, not package issue
+- Full reset is usually the solution
+- Always verify GPU after reconnecting
+
+**Pattern:** CUDA error → Full reset → Verify GPU → Run from top
 
 ---
 

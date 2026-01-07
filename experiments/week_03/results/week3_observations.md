@@ -152,5 +152,102 @@ This day deliberately shows off capabilities, builds confidence, sets expectatio
 
 ---
 
+## Day 2: HuggingFace Pipelines
+
+### Goal of Day 2
+
+Day 2 introduces the **High-Level Pipeline API** - the simplest way to use pre-trained models for common inference tasks without worrying about model internals.
+
+---
+
+### High-Level Pipeline API
+
+**Finding:** Pipelines make model usage incredibly simple
+- Two-step pattern: Create pipeline → Call pipeline
+- One function call for complex tasks
+- Automatic model selection if not specified
+- GPU acceleration via `device="cuda"` parameter
+
+**Key Pattern:**
+```python
+my_pipeline = pipeline(task, model=optional, device="cuda")
+result = my_pipeline(input)
+```
+
+**Tradeoff:**
+- **Pipelines:** Easy to use, but less control
+- **Manual inference:** More control, but more code
+
+**Recommendation:** Use pipelines for quick prototyping, manual for production
+
+---
+
+### Training vs Inference Distinction
+
+**Finding:** Understanding this distinction is crucial for knowing when to use pipelines
+- Pipelines are **only for inference** (using pre-trained models)
+- Training requires lower-level APIs (Week 7)
+- All API usage from previous weeks (GPT, Claude, Gemini) = inference
+
+**Key Insight:** "P" in GPT = "Pre-trained" - already trained, we're just using it
+
+**Recommendation:** Use pipelines for inference tasks, learn lower-level APIs for training
+
+---
+
+### Multiple Pipeline Tasks
+
+**Finding:** Pipelines support many tasks with same simple API
+
+**Tasks Explored:**
+1. **Sentiment Analysis:** Analyze emotional tone
+2. **Named Entity Recognition (NER):** Extract entities
+3. **Question Answering:** Answer questions from context
+4. **Text Summarization:** Condense long text
+5. **Translation:** Translate between languages
+6. **Zero-shot Classification:** Classify without training examples
+7. **Text Generation:** Generate text continuations
+8. **Image Generation:** Create images from text (Diffusers)
+9. **Audio Generation (TTS):** Convert text to speech
+
+**Key Insight:** Same simple API pattern works across all tasks - just change the task name
+
+**Recommendation:** Explore different pipeline tasks to understand breadth of capabilities
+
+---
+
+### Model Selection in Pipelines
+
+**Finding:** Can use defaults or specify custom models
+- Default models are good starting points
+- Custom models can improve results for specific use cases
+- Different models have different strengths (multilingual, quality, speed)
+
+**Key Insight:** Start with default → Try specific models if needed
+
+**Recommendation:** Use defaults for prototyping, research specific models for production
+
+---
+
+### Colab Pro-Tips (Day 2 Specific)
+
+**Finding:** Colab has specific quirks that can be confusing
+
+**Pro-Tip 1: Warnings**
+- Data science warnings can mostly be ignored
+- Glance over them, but don't worry unless something breaks
+- Warnings might give clues if something goes wrong later
+
+**Pro-Tip 2: Misleading CUDA Errors**
+- CUDA errors often mean runtime was switched (not package issue)
+- Don't try changing package versions
+- Solution: Full reset (Disconnect & delete → Reconnect → Run from top)
+
+**Key Insight:** CUDA errors = runtime switch, not code problem
+
+**Recommendation:** When CUDA errors appear → Full reset → Verify GPU → Run from top
+
+---
+
 ## Upcoming Days
-> Observations for Days 2–5 will be added incrementally.
+> Observations for Days 3–5 will be added incrementally.

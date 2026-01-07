@@ -163,7 +163,93 @@ This day deliberately shows off capabilities, builds confidence, sets expectatio
 ---
 
 ## Day 2: HuggingFace Pipelines
-> 🚧 To be completed after Day 2 experiments
+
+### Goal of Day 2
+
+Day 2 introduces the **High-Level Pipeline API** - the simplest way to use pre-trained models for common inference tasks without worrying about model internals.
+
+### What I'm Testing
+
+#### 1. High-Level Pipeline API
+**What:** Use HuggingFace `pipeline()` function for easy model access
+
+**Why:**
+- Simplest way to use pre-trained models
+- No need to understand model internals
+- Quick prototyping and experimentation
+- Task-specific abstractions handle complexity
+
+**What I learned:**
+- Pipelines are a high-level API for inference only (not training)
+- Two-step pattern: Create pipeline → Call pipeline
+- Default models are automatically selected if not specified
+- GPU acceleration via `device="cuda"` parameter
+- **Pattern:** `my_pipeline = pipeline(task, model=xx, device=xx)` then `my_pipeline(input)`
+
+#### 2. Training vs Inference Distinction
+**What:** Understand the difference between training and inference
+
+**Why:**
+- Pipelines are for inference only (using pre-trained models)
+- Important to understand when to use pipelines vs lower-level APIs
+- Foundation for understanding when we'll need advanced APIs (Week 7)
+
+**What I learned:**
+- **Training:** Model learns from data, updates parameters/weights
+- **Fine-tuning:** Training a model that's already been trained
+- **Inference:** Using a trained model to produce outputs on new inputs
+- Pipelines API is only for inference (Week 7 will cover training)
+- All API usage (GPT, Claude, Gemini) from previous weeks = inference
+
+#### 3. Multiple Pipeline Tasks
+**What:** Explore different pipeline tasks available in HuggingFace
+
+**Why:**
+- Understand breadth of what pipelines can do
+- Learn task-specific patterns
+- See how same API works across different tasks
+
+**What I learned:**
+- **Sentiment Analysis:** Analyze emotional tone of text
+- **Named Entity Recognition (NER):** Extract entities (people, places, organizations)
+- **Question Answering:** Answer questions given context
+- **Text Summarization:** Condense long text into summaries
+- **Translation:** Translate between languages
+- **Zero-shot Classification:** Classify text without training examples
+- **Text Generation:** Generate new text from prompts
+- **Image Generation:** Create images from text (Diffusers library)
+- **Audio Generation (TTS):** Convert text to speech
+
+**Key Learning:** Same simple API pattern works across all tasks - just change the task name
+
+#### 4. Model Selection in Pipelines
+**What:** Specify custom models vs using defaults
+
+**Why:**
+- Default models may not be best for your use case
+- Different models have different strengths
+- Learn to customize pipelines
+
+**What I learned:**
+- If no model specified, HuggingFace picks default for the task
+- Can specify model: `pipeline("task", model="model-name")`
+- Different models can improve results (e.g., multilingual sentiment model)
+- **Pattern:** Start with default → Try specific models if needed
+
+#### 5. Colab Pro-Tips (Day 2 Specific)
+**What:** Additional Colab troubleshooting tips
+
+**Why:**
+- Some errors are misleading (CUDA errors when runtime switched)
+- Need to know how to recover from runtime switches
+- Build confidence with Colab workflows
+
+**What I learned:**
+- Data science warnings can mostly be ignored (glance, but don't worry)
+- CUDA errors often mean runtime was switched (not a package issue)
+- Recovery: Disconnect & delete runtime → Clear outputs → Reconnect → Run from top
+- Always verify GPU after reconnecting (use View Resources)
+- **Pattern:** When in doubt → Full reset → Run from top
 
 ---
 
