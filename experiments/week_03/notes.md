@@ -3,6 +3,9 @@
 > This file accumulates learning notes incrementally.  
 > Each section reflects understanding at the end of that day.
 
+> **Note:** Early days include more procedural detail as learning scaffolding.  
+> From Day 4 onward, notes focus on **mental models, abstractions, and tradeoffs**.
+
 ## Overview
 
 Bullet-point insights from Week 3 experiments. Focus on **why** things work, not just **what** works.
@@ -91,18 +94,17 @@ Colab failures are normal. Recovery speed matters more than perfection.
 
 **Solution:** Pin package versions and reinstall each session
 
-**Package Installation:**
-```bash
-!pip install -q --upgrade transformers==4.56.2
-```
-
 **Key Points:**
 - Pinning versions avoids surprises
 - Dependency warnings can usually be ignored
-- No installs later in course ≠ no installs ever — this is foundational
 - Must reinstall every session (Colab doesn't persist packages)
+- Package management is foundational, not optional
 
 **Pattern:** Always start sessions with required package installations
+
+**Tradeoff:**
+- **Pinned versions:** Reproducible, but may miss updates
+- **Latest versions:** New features, but potential breaking changes
 
 ---
 
@@ -110,28 +112,18 @@ Colab failures are normal. Recovery speed matters more than perfection.
 
 **Problem:** Need to verify GPU type before running heavy models
 
-**Solution:** Use `nvidia-smi` to check GPU availability and type
-
-**Verification Code:**
-```python
-gpu_info = !nvidia-smi
-gpu_info = '\n'.join(gpu_info)
-if gpu_info.find('failed') >= 0:
-  print('Not connected to a GPU')
-else:
-  print(gpu_info)
-  if gpu_info.find('Tesla T4') >= 0:
-    print("Success - Connected to a T4")
-  else:
-    print("NOT CONNECTED TO A T4")
-```
+**Solution:** Verify GPU availability and type before model execution
 
 **Key Learning:**
 - Always verify GPU *before* running heavy models
 - Not all GPUs are equal (T4 vs A100 matters a lot)
-- GPU can silently downgrade to CPU
+- GPU can silently downgrade to CPU without warning
 
 **Pattern:** Verify GPU type → Check memory → Then run models
+
+**Tradeoff:**
+- **Verification:** Adds step, but prevents wasted time on wrong hardware
+- **Skip verification:** Faster, but risk running on CPU unknowingly
 
 ---
 
@@ -147,31 +139,17 @@ else:
 - Required for later weeks
 - Mirrors real production secret management
 
-**Setup Steps:**
-1. Create HuggingFace account at https://huggingface.co
-2. Navigate to Settings → Access Tokens
-3. Create new token with **WRITE** permissions (not fine-grained)
-4. Copy token (starts with `hf_...`)
-5. In Colab: Press key icon → Add secret:
-   - Name: `HF_TOKEN`
-   - Value: Your token
-   - Ensure notebook access switch is ON
-
-**Code Used:**
-```python
-from huggingface_hub import login
-from google.colab import userdata
-
-hf_token = userdata.get('HF_TOKEN')
-login(hf_token, add_to_git_credential=True)
-```
-
 **Key Learning:**
 - Secrets management matters even in notebooks
 - This pattern mirrors real production environments
 - Never hardcode tokens
+- WRITE permissions required (not fine-grained)
 
 **Pattern:** Store secrets in Colab secrets → Access via `userdata.get()` → Never commit tokens
+
+**Tradeoff:**
+- **Secrets management:** More setup, but secure and production-ready
+- **Hardcoded tokens:** Faster, but security risk and not scalable
 
 ---
 
@@ -181,49 +159,10 @@ login(hf_token, add_to_git_credential=True)
 
 **Solution:** Explore multiple diffusers models with different speed/quality tradeoffs
 
-#### First Demo: SDXL Turbo (Fast)
-
-```python
-from diffusers import AutoPipelineForText2Image
-pipe = AutoPipelineForText2Image.from_pretrained("stabilityai/sdxl-turbo", torch_dtype=torch.float16, variant="fp16")
-pipe.to("cuda")
-image = pipe(prompt=prompt, num_inference_steps=4, guidance_scale=0.0).images[0]
-```
-
-**Characteristics:**
-- Very fast (4 inference steps)
-- Lower quality but instant feedback
-- Good for rapid iteration
-
-#### Second Demo: SDXL Base (Higher Quality)
-
-```python
-from diffusers import DiffusionPipeline
-pipe = DiffusionPipeline.from_pretrained("stabilityai/stable-diffusion-xl-base-1.0", torch_dtype=torch.float16, use_safetensors=True, variant="fp16")
-pipe.to("cuda")
-image = pipe(prompt=prompt, num_inference_steps=30).images[0]
-```
-
-**Characteristics:**
-- More steps (30 vs 4)
-- Better quality
-- Slower
-
-#### Third Demo: Base + Refiner (Advanced)
-
-```python
-# Split inference: 80% base model, 20% refiner
-n_steps = 40
-high_noise_frac = 0.8
-
-image = base(prompt=prompt, num_inference_steps=n_steps, denoising_end=high_noise_frac, output_type="latent").images
-image = refiner(prompt=prompt, num_inference_steps=n_steps, denoising_start=high_noise_frac, image=image).images[0]
-```
-
-**Characteristics:**
-- Two-stage pipeline (base + refiner)
-- Produces noticeably better images
-- More complex setup
+**Model Variants:**
+- **SDXL Turbo:** Very fast (4 inference steps), lower quality, instant feedback
+- **SDXL Base:** More steps (30), better quality, slower
+- **Base + Refiner:** Two-stage pipeline (80% base, 20% refiner), best quality, most complex
 
 **Key Learning:**
 - Same task → multiple architectures
@@ -245,22 +184,6 @@ image = refiner(prompt=prompt, num_inference_steps=n_steps, denoising_start=high
 
 **Solution:** Use HuggingFace pipeline for text-to-speech with GPU acceleration
 
-**Code:**
-```python
-from transformers import pipeline
-from datasets import load_dataset
-import soundfile as sf
-import torch
-from IPython.display import Audio
-
-synthesiser = pipeline("text-to-speech", "microsoft/speecht5_tts", device='cuda')
-embeddings_dataset = load_dataset("matthijs/cmu-arctic-xvectors", split="validation", trust_remote_code=True)
-speaker_embedding = torch.tensor(embeddings_dataset[7306]["xvector"]).unsqueeze(0)
-speech = synthesiser("Hi to an artificial intelligence engineer, on the way to mastery!", forward_params={"speaker_embeddings": speaker_embedding})
-
-Audio(speech["audio"], rate=speech["sampling_rate"])
-```
-
 **Key Learning:**
 - HuggingFace isn't just text models
 - Audio workloads are GPU-accelerated
@@ -268,6 +191,10 @@ Audio(speech["audio"], rate=speech["sampling_rate"])
 - Speaker embeddings enable voice consistency
 
 **Pattern:** Use `device='cuda'` for GPU acceleration in pipelines
+
+**Tradeoff:**
+- **GPU acceleration:** Faster inference, but requires GPU
+- **CPU:** Works everywhere, but slower
 
 ---
 
@@ -280,23 +207,12 @@ Audio(speech["audio"], rate=speech["sampling_rate"])
 **Purpose:**
 - Show what's possible with **small paid budget**
 - Demonstrate scale difference between T4 and A100
-- Understand cloud GPU pricing
-
-**Model Used:**
-```python
-from diffusers import FluxPipeline
-pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-schnell", torch_dtype=torch.bfloat16).to("cuda")
-```
-
-**Cost Estimation:**
-- A100 = 5.37 compute units per hour (as of Oct 2025)
-- $9.99 = 100 compute units
-- Example: ~$0.003 for a single generation
-- **Critical:** You pay for **kernel uptime**, not just inference time
+- Understand cloud GPU pricing model
 
 **Key Learning:**
-- Cloud GPU pricing is approachable
+- Cloud GPU pricing is approachable (e.g., ~$0.003 per generation)
 - Performance scales non-linearly with hardware
+- **Critical:** You pay for **kernel uptime**, not just inference time
 - Always shut down paid runtimes when done
 - A100 is dramatically faster than T4
 
@@ -344,21 +260,14 @@ Day 2 introduces the **High-Level Pipeline API** - the simplest way to use pre-t
 **Solution:** Use HuggingFace `pipeline()` function
 
 **How It Works:**
-- **Step 1:** Create a pipeline - a function you can then call
-  ```python
-  my_pipeline = pipeline(task, model=xx, device=xx)
-  ```
-- **Step 2:** Call it as many times as you want
-  ```python
-  my_pipeline(input1)
-  my_pipeline(input2)
-  ```
+- Create a pipeline function for a specific task
+- Call it repeatedly with different inputs
+- Pipelines handle all the plumbing (tokenization, model loading, inference, decoding)
 
 **Key Points:**
 - If you don't specify a model, HuggingFace picks a default for the task
-- Specify `device="cuda"` for NVIDIA GPU (T4)
-- Specify `device="mps"` on Mac
-- Pipelines handle all the plumbing (tokenization, model loading, etc.)
+- Specify `device="cuda"` for NVIDIA GPU, `device="mps"` on Mac
+- Pipelines abstract away all implementation details
 
 **Pattern:** Create once → Call many times
 
@@ -402,113 +311,24 @@ Day 2 introduces the **High-Level Pipeline API** - the simplest way to use pre-t
 
 **Solution:** Explore multiple pipeline tasks to see breadth of capabilities
 
-#### 1. Sentiment Analysis
-```python
-my_simple_sentiment_analyzer = pipeline("sentiment-analysis", device="cuda")
-result = my_simple_sentiment_analyzer("I'm super excited to be on the way to LLM mastery!")
-```
-
-**Key Learning:**
-- Can specify better models (e.g., multilingual sentiment model)
-- Returns label and confidence score
-- **Pattern:** Default model → Try specific model if needed
-
-#### 2. Named Entity Recognition (NER)
-```python
-ner = pipeline("ner", device="cuda")
-result = ner("AI Engineers are learning about the amazing pipelines from HuggingFace in Google Colab from Ed Donner")
-```
-
-**Key Learning:**
-- Extracts entities (people, places, organizations, etc.)
-- Returns list of entities with labels and scores
-- Useful for information extraction
-
-#### 3. Question Answering
-```python
-question_answerer = pipeline("question-answering", device="cuda")
-result = question_answerer(question="What are Hugging Face pipelines?", context="...")
-```
-
-**Key Learning:**
-- Requires both question and context
-- Extracts answer from context
-- Returns answer with confidence score
-
-#### 4. Text Summarization
-```python
-summarizer = pipeline("summarization", device="cuda")
-summary = summarizer(text, max_length=50, min_length=25, do_sample=False)
-```
-
-**Key Learning:**
-- Can control summary length with `max_length` and `min_length`
-- `do_sample=False` for deterministic output
-- Returns summary text
-
-#### 5. Translation
-```python
-translator = pipeline("translation_en_to_fr", device="cuda")
-result = translator("The Data Scientists were truly amazed...")
-```
-
-**Key Learning:**
-- Task name includes language pair (e.g., `translation_en_to_fr`)
-- Can specify custom models for different language pairs
-- All translation models available on HuggingFace Hub
-
-#### 6. Zero-shot Classification
-```python
-classifier = pipeline("zero-shot-classification", device="cuda")
-result = classifier("Hugging Face's Transformers library is amazing!", 
-                    candidate_labels=["technology", "sports", "politics"])
-```
-
-**Key Learning:**
-- Classify text without training examples
-- Provide candidate labels at inference time
-- Returns labels with scores
-
-#### 7. Text Generation
-```python
-generator = pipeline("text-generation", device="cuda")
-result = generator("If there's one thing I want you to remember about using HuggingFace pipelines, it's")
-```
-
-**Key Learning:**
-- Generates continuation of input text
-- Can control length, temperature, etc.
-- Returns generated text
-
-#### 8. Image Generation (Diffusers)
-```python
-from diffusers import AutoPipelineForText2Image
-pipe = AutoPipelineForText2Image.from_pretrained("stabilityai/sdxl-turbo", torch_dtype=torch.float16, variant="fp16")
-pipe.to("cuda")
-image = pipe(prompt=prompt, num_inference_steps=4, guidance_scale=0.0).images[0]
-```
-
-**Key Learning:**
-- Pipelines work with Diffusers library too (not just Transformers)
-- Same concept: high-level API for image generation
-- **Note:** This was also shown in Day 1, but now explained as part of pipelines ecosystem
-
-#### 9. Audio Generation (Text-to-Speech)
-```python
-synthesiser = pipeline("text-to-speech", "microsoft/speecht5_tts", device='cuda')
-speech = synthesiser("Hi to an artificial intelligence engineer, on the way to mastery!", 
-                     forward_params={"speaker_embeddings": speaker_embedding})
-```
-
-**Key Learning:**
-- Pipelines support audio tasks too
-- Can use speaker embeddings for voice consistency
-- Returns audio that can be played directly
-- **Note:** This was also shown in Day 1, but now explained as part of pipelines ecosystem
+**Tasks Covered:**
+1. **Sentiment Analysis:** Analyze emotional tone, returns label and confidence
+2. **Named Entity Recognition (NER):** Extract entities (people, places, organizations)
+3. **Question Answering:** Answer questions from provided context
+4. **Text Summarization:** Condense long text, controllable length
+5. **Translation:** Translate between language pairs
+6. **Zero-shot Classification:** Classify without training examples, provide labels at inference
+7. **Text Generation:** Generate text continuations
+8. **Image Generation (Diffusers):** Create images from text prompts
+9. **Audio Generation (Text-to-Speech):** Convert text to speech with voice consistency
 
 **Key Insight:** Same simple API pattern works across all tasks - just change the task name
 
 **Pattern:** `pipeline(task_name, model=optional, device="cuda")` → `pipeline(input)`
+
+**Tradeoff:**
+- **Unified API:** Easy to learn, but less task-specific control
+- **Task-specific APIs:** More control, but more to learn
 
 ---
 
@@ -522,15 +342,6 @@ speech = synthesiser("Hi to an artificial intelligence engineer, on the way to m
 - If no model specified, HuggingFace picks default for the task
 - Defaults are usually good starting points
 - May not be optimal for specific use cases
-
-**Custom Models:**
-```python
-# Use default
-pipeline("sentiment-analysis", device="cuda")
-
-# Use specific model
-pipeline("sentiment-analysis", model="nlptown/bert-base-multilingual-uncased-sentiment", device="cuda")
-```
 
 **Key Learning:**
 - Different models have different strengths
@@ -548,30 +359,19 @@ pipeline("sentiment-analysis", model="nlptown/bert-base-multilingual-uncased-sen
 
 **Problem:** Colab has quirks that can be confusing
 
-**Solution:** Learn specific troubleshooting tips
+**Solution:** Learn specific troubleshooting patterns
 
-#### Pro-Tip 1: Warnings Can Be Ignored
+**Pro-Tip 1: Warnings Can Be Ignored**
 - Data Science code often gives warnings and messages
 - Can mostly be safely ignored
 - Glance over them, but don't worry unless something breaks
 - If something goes wrong later, warnings might give clues
 
-#### Pro-Tip 2: Misleading CUDA Errors
-**The Problem:**
+**Pro-Tip 2: Misleading CUDA Errors**
 - Error: "CUDA is required but not available for bitsandbytes"
-- This is **super-misleading**!
-- Don't try changing package versions
-
-**The Real Issue:**
-- Google switched out your Colab runtime (too busy)
-- Runtime downgraded from GPU to CPU
-
-**The Solution:**
-1. `Kernel menu → Disconnect and delete runtime`
-2. `Edit menu → Clear All Outputs`
-3. Connect to new T4 using button at top right
-4. Select "View resources" to confirm GPU
-5. Rerun cells from top down, starting with pip installs
+- This is **super-misleading** - don't try changing package versions
+- **Real issue:** Google switched out your Colab runtime (too busy), runtime downgraded from GPU to CPU
+- **Solution:** Full reset (Disconnect and delete runtime → Clear outputs → Reconnect → Verify GPU → Run from top)
 
 **Key Learning:**
 - CUDA errors often mean runtime switch, not package issue
@@ -601,20 +401,11 @@ Day 3 explores the world of Tokenizers - the crucial bridge between human-readab
 2. **Tokens:** Fragments of words (not always whole words)
 3. **Token IDs:** Numerical IDs that map to tokens in vocabulary
 
-**Code Used:**
-```python
-from transformers import AutoTokenizer
-
-tokenizer = AutoTokenizer.from_pretrained('meta-llama/Meta-Llama-3.1-8B', trust_remote_code=True)
-text = "I am excited to show Tokenizers in action to my LLM engineers"
-tokens = tokenizer.encode(text)  # Returns list of token IDs
-```
-
 **Key Learning:**
 - Character count ≠ Word count ≠ Token count
 - Tokens are fragments of words, not always whole words
 - Different tokenizers produce different tokenizations for the same text
-- **Pattern:** `tokenizer.encode(text)` → list of token IDs
+- **Pattern:** Text → Tokens → Token IDs
 
 **Example:**
 - Text: "I am excited to show Tokenizers in action to my LLM engineers"
@@ -635,12 +426,6 @@ tokens = tokenizer.encode(text)  # Returns list of token IDs
 - Vocabulary size varies by model
 - Special tokens are added to vocabulary
 
-**Code Used:**
-```python
-tokenizer.get_added_vocab()  # Special tokens
-len(tokenizer.vocab)  # Vocabulary size
-```
-
 **Key Learning:**
 - Vocabulary is the mapping between tokens and their numerical IDs
 - Special tokens (like `<|system|>`, `<|user|>`, `<|assistant|>`) are added to vocabulary
@@ -652,17 +437,11 @@ len(tokenizer.vocab)  # Vocabulary size
 
 **Problem:** Convert token IDs back to text for verification
 
-**Solution:** Use `decode()` and `batch_decode()` methods
-
-**Code Used:**
-```python
-tokenizer.decode(tokens)  # Single sequence
-tokenizer.batch_decode(tokens)  # Multiple sequences
-```
+**Solution:** Use decode methods to reverse tokenization
 
 **Key Learning:**
-- `decode()` converts token IDs back to text
-- `batch_decode()` can decode multiple sequences
+- Decode converts token IDs back to text
+- Batch decode can handle multiple sequences
 - Round-trip: text → tokens → token IDs → text (should match original)
 - Useful for debugging and verification
 
@@ -674,29 +453,18 @@ tokenizer.batch_decode(tokens)  # Multiple sequences
 
 **Problem:** Many models have Instruct variants that expect specific prompt formats
 
-**Solution:** Use `apply_chat_template()` to convert messages format to model-specific prompts
+**Solution:** Use chat templates to convert messages format to model-specific prompts
 
 **What's Shown:**
 - Instruct models are trained for chat/conversation
 - They expect prompts with system, user, and assistant roles
 - Each model has its own chat template format
 
-**Code Used:**
-```python
-tokenizer = AutoTokenizer.from_pretrained('meta-llama/Meta-Llama-3.1-8B-Instruct', trust_remote_code=True)
-
-messages = [
-    {"role": "system", "content": "You are a helpful assistant"},
-    {"role": "user", "content": "Tell a light-hearted joke for a room of Data Scientists"}
-]
-
-prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-```
-
 **Key Learning:**
-- `apply_chat_template()` converts messages format to model-specific prompts
+- Chat templates convert messages format to model-specific prompts
 - Different models have different chat template formats
 - Chat templates add special tokens for system/user/assistant roles
+- Generation prompts ensure models respond rather than continue
 - **Pattern:** Messages (list of dicts) → Chat template → Model-specific prompt
 
 **Tradeoff:**
@@ -712,15 +480,7 @@ prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_
 **Solution:** Realize that LLMs take Token IDs as input, not Python objects
 
 **The Revelation:**
-For 2.5 weeks, we've been using messages format (list of Python dictionaries):
-```python
-messages = [
-    {"role": "system", "content": "You are a helpful assistant"},
-    {"role": "user", "content": "Tell a light-hearted joke for a room of Data Scientists"}
-]
-```
-
-**But an LLM is just a Data Science model that takes a sequence of numbers and predicts the probability of the next number! You can't pass a bunch of Python objects into a statistical model!**
+For 2.5 weeks, we've been using messages format (list of Python dictionaries), but an LLM is just a Data Science model that takes a sequence of numbers and predicts the probability of the next number! You can't pass a bunch of Python objects into a statistical model!
 
 **The Missing Piece:**
 1. The messages in OpenAI format get converted:
@@ -753,16 +513,6 @@ messages = [
 - **DeepSeek 3.1** from DeepSeek AI
 - **QwenCoder 2.5** from Alibaba Cloud (code-specific)
 
-**Code Used (Example for Phi-4):**
-```python
-PHI4 = "microsoft/Phi-4-mini-instruct"
-phi4_tokenizer = AutoTokenizer.from_pretrained(PHI4)
-text = "I am curiously excited to show Hugging Face Tokenizers in action to my LLM engineers"
-tokens = phi4_tokenizer.encode(text)
-print(tokens)
-print(phi4_tokenizer.batch_decode(tokens))
-```
-
 **Key Learning:**
 - Same text produces different token IDs across models
 - Each model has different tokenization behavior and chat template formats
@@ -783,7 +533,6 @@ print(phi4_tokenizer.batch_decode(tokens))
 **Solution:** Follow Meta's terms of service agreement process
 
 **Key Requirements:**
-- Visit model page on Hugging Face: https://huggingface.co/meta-llama/Meta-Llama-3.1-8B
 - Agree to terms of service (use same email as HF account if possible)
 - Approval usually takes a few minutes
 - Approval applies to the whole 3.1 family of models
@@ -791,7 +540,7 @@ print(phi4_tokenizer.batch_decode(tokens))
 **Key Learning:**
 - Llama 3.1 is commonly used in industry, which is why it's included in this course
 - Requires explicit approval from Meta
-- Troubleshooting steps available if access is denied
+- Access restrictions exist for legal/licensing reasons
 
 ---
 
@@ -814,7 +563,122 @@ print(phi4_tokenizer.batch_decode(tokens))
 ---
 
 ## Day 4: Transformers Library Models
-> 🚧 To be completed after Day 4 experiments
+
+### Goal of Day 4
+
+Day 4 moves beyond pipelines to the lower-level Transformers API, directly interacting with model objects, understanding quantization, and exploring Transformer architecture.
+> This day marks the intentional shift from procedural learning to abstraction-first reasoning.
+
+
+---
+
+### Pipelines vs Direct Model Access
+
+**Problem:** Pipelines abstract away control needed for customization
+
+**Solution:** Use `AutoModelForCausalLM` for direct model access
+
+**Key Learning:**
+- Pipelines are convenient but limit customization
+- Direct API enables fine-tuning, custom generation parameters, and architecture inspection
+- Tradeoff: More code and complexity for greater control
+
+**Pattern:** Pipelines for quick tasks → Direct API for production customization
+
+---
+
+### Quantization as Deployment Strategy
+
+**Problem:** Full precision models exceed available GPU memory
+
+**Solution:** Quantization reduces memory footprint at minimal quality cost
+
+**Key Learning:**
+- 4-bit quantization reduces model size by ~75%
+- Essential for running large models on limited hardware (T4, consumer GPUs)
+- Quality loss is usually minimal for most use cases
+- Tradeoff: Slight quality reduction for massive memory savings
+
+**Pattern:** Memory-constrained → Quantize → Run larger models
+
+---
+
+### Transformer Architecture Mental Model
+
+**Problem:** Understanding how models process inputs internally
+
+**Solution:** Recognize the consistent architecture pattern across models
+
+**Key Learning:**
+- Architecture flow: Input tokens → Embeddings → Decoder layers → LM Head → Output probabilities
+- Decoder layers contain attention and MLP components
+- Model depth (number of layers) directly affects capacity and performance
+- Tradeoff: Deeper models = better performance but more memory and slower inference
+
+**Pattern:** Architecture understanding enables better debugging and customization
+
+---
+
+### Streaming as UX Choice
+
+**Problem:** Long generations create poor user experience (wait then see)
+
+**Solution:** Stream outputs incrementally as tokens are generated
+
+**Key Learning:**
+- Streaming transforms perception from "waiting" to "watching progress"
+- Standard pattern in production applications
+- Tradeoff: Slightly slower but dramatically better UX
+
+**Pattern:** Long generations → Stream → Better UX
+
+---
+
+### Generation Prompts for Instruct Models
+
+**Problem:** Instruct models need explicit signals to generate responses vs. continuing prompts
+
+**Solution:** Use generation prompts in chat templates
+
+**Key Learning:**
+- Without generation prompt, models predict continuation of user message
+- With generation prompt, models understand they should respond
+- Critical distinction for chat/conversation applications
+- Tradeoff: Adds tokens but ensures proper behavior
+
+**Pattern:** Instruct models → Generation prompts → Proper responses
+
+---
+
+### Memory Management as Runtime Concern
+
+**Problem:** GPU memory is limited and must be managed when switching models
+
+**Solution:** Systematic cleanup process (delete references, garbage collect, clear cache)
+
+**Key Learning:**
+- Memory management is not optional when running multiple models
+- Three-step cleanup ensures memory is actually freed
+- Memory may not show as freed immediately in UI but is available
+- Tradeoff: More code but prevents out-of-memory errors
+
+**Pattern:** Switch models → Cleanup → Load next model
+
+---
+
+### Model Selection Tradeoffs
+
+**Problem:** Different models have different strengths, sizes, and access requirements
+
+**Solution:** Understand model characteristics to make informed choices
+
+**Key Learning:**
+- Model selection involves balancing quality, memory, speed, and access requirements
+- Some models require quantization, others don't (size-dependent)
+- Access restrictions exist for legal/licensing reasons
+- Tradeoff: Restricted models often better quality but require approval; open models more accessible but may have limitations
+
+**Pattern:** Task requirements → Model characteristics → Selection decision
 
 ---
 

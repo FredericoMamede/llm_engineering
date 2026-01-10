@@ -383,7 +383,31 @@ Day 3 explores the world of Tokenizers - the crucial bridge between human-readab
 ---
 
 ## Day 4: Transformers Library Models
-> 🚧 To be completed after Day 4 experiments
+
+### Goal of Day 4
+
+Day 4 moves beyond pipelines to the lower-level Transformers API, directly interacting with model objects, understanding quantization, and exploring Transformer architecture.
+This day marks the transition from high-level abstractions to explicit model execution and resource-aware inference.
+
+### What I'm Testing
+
+- Direct model access via `AutoModelForCausalLM` for customization beyond pipelines
+- Quantization as a deployment strategy for memory-constrained environments
+- Transformer architecture internals (embeddings, decoder layers, attention mechanisms)
+- Streaming outputs for better user experience
+- Generation prompts to ensure proper Instruct model behavior
+- Memory management patterns for multi-model workflows
+- Model selection tradeoffs across different architectures
+
+### What I Learned
+
+- Pipelines abstract away control; direct API access enables fine-tuning and customization
+- Quantization is a necessary tradeoff for running large models on limited hardware
+- Transformer architecture follows a consistent pattern: embeddings → decoder layers → LM head
+- Streaming transforms user experience from "wait then see" to "see as it generates"
+- Generation prompts are critical for Instruct models to respond rather than continue
+- Memory management is a runtime concern, not just a setup step
+- Model selection involves balancing quality, memory, speed, and access requirements
 
 ---
 

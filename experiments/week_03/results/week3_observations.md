@@ -375,5 +375,169 @@ Day 3 explores the world of Tokenizers - the crucial bridge between human-readab
 
 ---
 
+## Day 4: Transformers Library Models
+
+### Goal of Day 4
+
+Day 4 explores the **lower-level API** of Transformers - the models that wrap PyTorch code for the transformers themselves. This is the step beyond pipelines, where we directly interact with model objects, understand quantization, and explore Transformer architecture.
+
+---
+
+### Lower-Level Transformers API
+
+**Finding:** Direct model access provides more control than pipelines
+- `AutoTokenizer` and `AutoModelForCausalLM` give direct access to model objects
+- Can inspect model architecture (layers, embeddings, decoder layers)
+- More control over generation parameters
+- Foundation for fine-tuning and advanced use cases
+
+**Key Insight:** Direct API is essential for customization and understanding model internals
+
+**Recommendation:** Use pipelines for quick tasks, direct API for customization and production
+
+---
+
+### Quantization (4-bit)
+
+**Finding:** 4-bit quantization allows running larger models on limited GPU memory
+- Reduces model size by ~75%
+- Essential for Colab free tier (T4 GPUs)
+- Minimal quality loss in most cases
+- Configurable via `BitsAndBytesConfig`
+
+**Key Insight:** Quantization is essential for running large models on limited hardware
+
+**Recommendation:** Use quantization for models that don't fit in GPU memory, especially on free/low-cost GPUs
+
+**Tradeoff:**
+- **Full precision:** Better quality, more memory, slower
+- **4-bit quantization:** Lower quality (usually minimal), much less memory, faster
+
+---
+
+### Transformer Model Architecture
+
+**Finding:** Transformer models have a consistent architecture structure
+- **Embeddings:** Convert tokens to high-dimensional vectors
+- **Decoder layers:** Multiple layers (16 for Llama 3.2, 32 for Llama 3.1)
+  - Self-attention layers
+  - Multi-layer perceptron (MLP) layers
+  - Batch norm layers
+- **LM Head:** Produces output (probability distribution over tokens)
+
+**Key Insight:** Understanding architecture helps with debugging and customization
+
+**Recommendation:** Inspect model architecture to understand internals, especially when debugging
+
+---
+
+### TextStreamer
+
+**Finding:** Streaming outputs improves user experience
+- Text appears incrementally as tokens are generated
+- Better UX for long generations
+- Standard pattern in production applications
+
+**Key Insight:** Streaming is essential for good user experience in production
+
+**Recommendation:** Use TextStreamer for any production application with text generation
+
+---
+
+### Generation Prompts
+
+**Finding:** `add_generation_prompt=True` is critical for Instruct models
+- Without it, model might just continue user message
+- With it, model generates proper response
+- Essential for chat/conversation models
+
+**Key Insight:** Generation prompts ensure models generate responses, not just continue prompts
+
+**Recommendation:** Always use `add_generation_prompt=True` for Instruct models in chat mode
+
+---
+
+### Model Generation
+
+**Finding:** `model.generate()` produces token IDs that must be decoded
+- Output is token IDs (not text)
+- Must decode with `tokenizer.decode()`
+- Can control generation length with `max_new_tokens`
+- Can use `attention_mask` to mask padding tokens
+
+**Key Insight:** Understanding the token ID → text flow is essential for working with models
+
+**Recommendation:** Always decode token IDs back to text for human-readable output
+
+---
+
+### Memory Management
+
+**Finding:** Proper memory cleanup is essential when switching models
+- Three-step process: Delete references → Garbage collect → Clear CUDA cache
+- Memory might not show as freed immediately, but is available
+- Prevents out-of-memory errors
+
+**Key Insight:** Memory management is critical for running multiple models in sequence
+
+**Recommendation:** Always clean up memory when switching between models, especially in Colab
+
+**Tradeoff:**
+- **Proper cleanup:** More code, but prevents memory issues
+- **No cleanup:** Simpler, but risk out-of-memory errors
+
+---
+
+### Model Memory Footprint
+
+**Finding:** Memory footprint varies significantly by model size and quantization
+- Quantized models use much less memory
+- Important for planning multiple models
+- Can check with `model.get_memory_footprint()`
+
+**Key Insight:** Understanding memory requirements helps plan resource usage
+
+**Recommendation:** Check memory footprint before loading multiple models
+
+---
+
+### Multiple Models Comparison
+
+**Finding:** Different models have different strengths, sizes, and behaviors
+- **Llama 3.2:** Smaller than 3.1, requires Meta approval
+- **Phi-4:** Microsoft's model, good performance
+- **Gemma:** Google's model, requires Google terms acceptance
+- **Qwen:** Alibaba Cloud's model
+- **DeepSeek:** Reasoning model, good for longer outputs
+- Some models need quantization, others don't
+
+**Key Insight:** Model selection depends on task, quality requirements, and resource constraints
+
+**Recommendation:** Test multiple models to find the best fit for your use case
+
+**Tradeoff:**
+- **Larger models:** Better quality, more memory, slower
+- **Smaller models:** Less memory, faster, potentially lower quality
+
+---
+
+### Model Access Requirements
+
+**Finding:** Some models require approval or terms acceptance
+- **Llama models:** Require Meta approval (sign terms of service)
+- **Gemma models:** Require Google terms acceptance
+- Approval usually comes quickly (minutes)
+- Approval for one model family applies to whole family
+
+**Key Insight:** Access restrictions are common for high-quality models
+
+**Recommendation:** Complete approval process early, especially for production use
+
+**Tradeoff:**
+- **Restricted models:** Better quality/features, but requires approval
+- **Open models:** No approval needed, but might have limitations
+
+---
+
 ## Upcoming Days
-> Observations for Days 4–5 will be added incrementally.
+> Observations for Day 5 will be added incrementally.
