@@ -1,0 +1,77 @@
+# Model Configurations for Week 3 Experiments
+# This file is optional and intentionally selective.
+# It captures reusable model choices, not every model explored in notebooks.
+
+models:
+  # Text Generation Models (classic / lightweight)
+  text_generation:
+    gpt2:
+      model_name: "gpt2"
+      task: "text-generation"
+      max_length: 100
+
+    gpt2_medium:
+      model_name: "gpt2-medium"
+      task: "text-generation"
+      max_length: 100
+
+  # Summarization Models
+  summarization:
+    bart_large:
+      model_name: "facebook/bart-large-cnn"
+      task: "summarization"
+      max_length: 150
+      min_length: 50
+
+    t5_small:
+      model_name: "t5-small"
+      task: "summarization"
+      max_length: 150
+      min_length: 50
+
+  # Instruction-Tuned LLMs (Chat / Analysis)
+  instruct_llms:
+    llama_3_1_8b:
+      model_name: "meta-llama/Meta-Llama-3.1-8B-Instruct"
+      task: "text-generation"
+      requires_auth: true
+      notes: "Industry-common instruct model; requires Meta approval"
+
+    llama_3_2_3b:
+      model_name: "meta-llama/Llama-3.2-3B-Instruct"
+      task: "text-generation"
+      requires_auth: true
+      notes: "Smaller instruct model suitable for Colab T4 with quantization"
+
+  # Speech Recognition Models
+  speech_recognition:
+    whisper_medium_en:
+      model_name: "openai/whisper-medium.en"
+      task: "automatic-speech-recognition"
+      notes: "Used for meeting minutes transcription (Day 5)"
+
+    whisper_small:
+      model_name: "openai/whisper-small"
+      task: "automatic-speech-recognition"
+      notes: "Faster, lower-resource alternative"
+
+  # Tokenizers
+  tokenizers:
+    gpt2:
+      model_name: "gpt2"
+
+    bert:
+      model_name: "bert-base-uncased"
+
+    t5:
+      model_name: "t5-small"
+
+# GPU Settings (for Colab)
+gpu:
+  runtime_type: "T4"  # Options: T4, V100, A100 (Pro+)
+  use_gpu: true
+
+# HuggingFace Settings
+huggingface:
+  cache_dir: null  # null = default
+  use_auth_token: true
