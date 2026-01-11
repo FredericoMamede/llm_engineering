@@ -1,0 +1,99 @@
+{
+  "title": "Weekly Team Standup",
+  "date": "2025-01-11",
+  "duration_minutes": 45,
+  "attendees": [
+    "Sarah Chen",
+    "Mike Rodriguez",
+    "Emily Watson",
+    "David Kim",
+    "Alex Thompson"
+  ],
+  "organizer": "Sarah Chen",
+  "summary": "Weekly team standup meeting covering sprint progress, design updates, QA status, and marketing preparations. The team is on track for the February 1st launch. Key focus areas include completing payment integration, finalizing dashboard design with stakeholder approval, and preparing launch materials.",
+  "topics": [
+    {
+      "topic": "Sprint Progress - Engineering",
+      "summary": "Authentication module completed. Payment integration at 80% completion. Resolved third-party API blocker. Expected completion by end of week.",
+      "duration_minutes": null
+    },
+    {
+      "topic": "Design Updates",
+      "summary": "Dashboard mockups completed and shared in Figma. Awaiting stakeholder feedback by Wednesday.",
+      "duration_minutes": null
+    },
+    {
+      "topic": "QA Testing",
+      "summary": "Testing of authentication module in progress. 3 minor bugs found and logged. Testing completion expected by Friday.",
+      "duration_minutes": null
+    },
+    {
+      "topic": "Marketing Launch Campaign",
+      "summary": "Preparing launch campaign materials. Need final screenshots from design by end of week.",
+      "duration_minutes": null
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "Move forward with current payment integration approach - no changes needed",
+      "rationale": "Progress is on track and blocker has been resolved",
+      "impact": "Maintains timeline for February 1st launch"
+    },
+    {
+      "decision": "Use new dashboard design pending stakeholder approval",
+      "rationale": "Design work is complete and ready for review",
+      "impact": "Final approval needed to proceed with implementation"
+    },
+    {
+      "decision": "Launch date remains February 1st - no changes to timeline",
+      "rationale": "Team is on track and no blockers identified",
+      "impact": "Maintains project schedule and stakeholder expectations"
+    }
+  ],
+  "action_items": [
+    {
+      "item": "Complete payment integration",
+      "owner": "Mike Rodriguez",
+      "due_date": "2025-01-17",
+      "priority": "high"
+    },
+    {
+      "item": "Provide final screenshots to marketing",
+      "owner": "Emily Watson",
+      "due_date": "2025-01-16",
+      "priority": "high"
+    },
+    {
+      "item": "Follow up on stakeholder feedback if not received by Wednesday",
+      "owner": "Emily Watson",
+      "due_date": "2025-01-15",
+      "priority": "medium"
+    },
+    {
+      "item": "Complete QA testing of authentication module",
+      "owner": "David Kim",
+      "due_date": "2025-01-17",
+      "priority": "high"
+    },
+    {
+      "item": "Finalize launch campaign materials",
+      "owner": "Alex Thompson",
+      "due_date": "2025-01-20",
+      "priority": "high"
+    }
+  ],
+  "key_insights": [
+    "Team is on track for February 1st launch",
+    "Payment integration is the critical path item this week",
+    "Stakeholder approval needed on dashboard design to proceed"
+  ],
+  "next_steps": [
+    "Schedule stakeholder review meeting for dashboard design",
+    "Prepare demo for next week's sprint review",
+    "Update project timeline if any delays occur"
+  ],
+  "metadata": {
+    "meeting_type": "standup",
+    "team": "product_development"
+  }
+}
