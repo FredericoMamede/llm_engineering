@@ -412,7 +412,31 @@ This day marks the transition from high-level abstractions to explicit model exe
 ---
 
 ## Day 5: Meeting Minutes Creator
-> 🚧 To be completed after Day 5 experiments
+
+### Goal of Day 5
+
+Day 5 builds an end-to-end AI workflow that combines audio transcription with LLM-powered text analysis to create structured meeting minutes from raw audio files.
+
+### What I'm Testing
+
+- Token prediction visualization: Understanding how models predict tokens one at a time with probability distributions
+- Google Drive integration with Colab for persistent file storage
+- Automatic speech recognition (ASR) using HuggingFace Whisper pipeline
+- OpenAI transcription API as alternative transcription option
+- End-to-end pipeline: Audio → Transcription → LLM Analysis → Structured Meeting Minutes
+- System prompts for structured output generation
+- Real-world application pattern for audio-to-text workflows
+
+### What I Learned
+
+- Model inference is token-by-token prediction: Each token is chosen from a probability distribution, with alternatives showing what the model "almost said"
+- Visualizing token predictions reveals the probabilistic nature of LLMs and helps understand uncertainty in outputs
+- Combining multiple AI capabilities (ASR + LLM) creates powerful end-to-end applications
+- Transcription options involve tradeoffs: open-source (free, GPU-based) vs. API (paid, cloud-based, potentially higher quality)
+- Google Drive mounting enables persistent file access in ephemeral Colab environments
+- LLMs excel at transforming unstructured transcripts into structured formats (summaries, action items, takeaways)
+- System prompts are critical for guiding LLM output format and structure
+- This pattern generalizes to any audio-to-structured-text workflow (interviews, lectures, podcasts, customer calls)
 
 ---
 

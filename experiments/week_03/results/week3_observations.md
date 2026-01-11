@@ -539,5 +539,107 @@ Day 4 explores the **lower-level API** of Transformers - the models that wrap Py
 
 ---
 
-## Upcoming Days
-> Observations for Day 5 will be added incrementally.
+---
+
+## Day 5: Meeting Minutes Creator
+
+### Token Prediction Visualization
+
+**Finding:** Visualizing token-by-token predictions reveals the probabilistic nature of LLM inference
+- Each token is chosen from a probability distribution
+- Alternative tokens show what the model "almost said"
+- Visualization makes abstract concepts (probability distributions) concrete
+- Logprobs from APIs enable introspection into model decision-making
+
+**Key Insight:** Understanding token-level predictions helps explain model behavior and uncertainty
+
+**Recommendation:** Use token visualization tools for debugging, understanding model outputs, and educational purposes
+
+**Tradeoff:**
+- **Token-level introspection:** Reveals model uncertainty, but adds complexity
+- **Black-box generation:** Simpler, but hides probabilistic nature
+
+---
+
+### End-to-End Workflow Pattern
+
+**Finding:** Combining multiple AI capabilities (ASR + LLM) creates powerful end-to-end applications
+- Two-stage pipeline: Transcription (audio → text) → Analysis (text → structured output)
+- Each stage can use different models/APIs based on requirements
+- Pattern generalizes to any audio-to-structured-text workflow
+
+**Key Insight:** End-to-end workflows enable specialized optimization per stage while maintaining overall coherence
+
+**Recommendation:** Design workflows with clear stage boundaries for easier debugging and optimization
+
+**Tradeoff:**
+- **Multi-stage workflows:** More flexible and optimized, but more complex
+- **Single-stage workflows:** Simpler, but less specialized
+
+---
+
+### Transcription Options
+
+**Finding:** Open-source (Whisper) vs. OpenAI API involves clear tradeoffs
+- **Whisper:** Free, GPU-based, good quality, full control
+- **OpenAI API:** Paid, cloud-based, excellent quality, no infrastructure needed
+- Quality difference may be minimal for many use cases
+
+**Key Insight:** Choice depends on volume, cost sensitivity, infrastructure, and control requirements
+
+**Recommendation:** Start with open-source for high-volume or cost-sensitive use cases; use API for quick prototypes
+
+**Tradeoff:**
+- **Open-source:** Free but requires infrastructure and setup
+- **API:** Easy but costs money and less control
+
+---
+
+### Google Drive Integration
+
+**Finding:** Google Drive mounting bridges ephemeral Colab compute with persistent storage
+- Essential for workflows that process external files
+- Pattern mirrors production: compute (ephemeral) + storage (persistent)
+- Requires Google account and setup
+
+**Key Insight:** Persistence strategy is critical for real-world workflows
+
+**Recommendation:** Use Drive mounting for file-based workflows; consider alternatives for production (S3, GCS, etc.)
+
+**Tradeoff:**
+- **Drive mounting:** Persistent but requires Google account
+- **Upload each session:** Simple but repetitive
+
+---
+
+### Structured Output Generation
+
+**Finding:** LLMs excel at transforming unstructured transcripts into structured formats
+- System prompts define output structure (summary, discussion points, action items)
+- Structured prompts produce consistent, parseable outputs
+- Pattern applies to any unstructured → structured transformation
+
+**Key Insight:** System prompts are critical for guiding LLM output format and structure
+
+**Recommendation:** Design system prompts with clear structure requirements; test with multiple models
+
+**Tradeoff:**
+- **Structured prompts:** More tokens but consistent output
+- **Free-form prompts:** Fewer tokens but inconsistent format
+
+---
+
+### Real-World Application Pattern
+
+**Finding:** Audio → Text → Structured Analysis pattern generalizes across domains
+- Applies to: interviews, lectures, podcasts, customer calls, depositions
+- Each stage can be optimized independently
+- Transcription quality directly impacts downstream analysis quality
+
+**Key Insight:** This is a generalizable pattern, not just a meeting minutes tool
+
+**Recommendation:** Build reusable workflow components; adapt system prompts for different output structures
+
+**Tradeoff:**
+- **Generic workflow:** Reusable but may need customization
+- **Custom workflow:** Optimized but less reusable

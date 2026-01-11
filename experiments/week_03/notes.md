@@ -683,7 +683,138 @@ Day 4 moves beyond pipelines to the lower-level Transformers API, directly inter
 ---
 
 ## Day 5: Meeting Minutes Creator
-> 🚧 To be completed after Day 5 experiments
+
+### Goal of Day 5
+
+Day 5 builds an end-to-end AI workflow that combines audio transcription with LLM-powered text analysis to create structured meeting minutes from raw audio files. It also includes a demonstration of token-by-token prediction visualization to understand how model inference works internally.
+
+---
+
+### Token Prediction Visualization: Understanding Model Inference
+
+**Problem:** Need to understand how LLMs actually generate text at the token level
+
+**Solution:** Visualize token-by-token predictions with probability distributions and alternatives
+
+**Key Learning:**
+- Model inference is fundamentally token-by-token prediction
+- Each token is chosen from a probability distribution over the vocabulary
+- Alternative tokens show what the model "almost said" - revealing uncertainty
+- Visualization makes the probabilistic nature of LLMs concrete and understandable
+- Logprobs from APIs enable this introspection into model decision-making
+
+**Pattern:** Prompt → Token 1 (with probability) → Token 2 (with probability) → ... → Complete text
+
+**Tradeoff:**
+- **Token-level introspection:** Reveals model uncertainty and decision-making, but adds complexity
+- **Black-box generation:** Simpler, but hides the probabilistic nature of outputs
+
+---
+
+### End-to-End Workflow Pattern
+
+**Problem:** Need to transform raw audio into structured, actionable meeting minutes
+
+**Solution:** Combine ASR (Automatic Speech Recognition) with LLM analysis in a two-stage pipeline
+
+**Key Learning:**
+- End-to-end workflows combine multiple AI capabilities for powerful applications
+- Two-stage pattern: Transcription (audio → text) → Analysis (text → structured output)
+- Each stage can use different models/APIs based on requirements
+- Tradeoff: More stages = more complexity, but enables specialized optimization per stage
+
+**Pattern:** Audio → ASR → Transcription → LLM → Structured Output
+
+---
+
+### Transcription Options Tradeoff
+
+**Problem:** Need to choose between open-source and API-based transcription
+
+**Solution:** Evaluate based on cost, quality, control, and infrastructure requirements
+
+**Open-Source (Whisper):**
+- Free, runs on GPU, good quality
+- Full control over model and processing
+- Requires GPU infrastructure
+- Can be slower for large files
+
+**OpenAI API:**
+- Paid, cloud-based, excellent quality
+- No infrastructure needed
+- Faster processing
+- Less control, ongoing costs
+
+**Key Learning:**
+- Open-source: Better for high-volume, cost-sensitive, or privacy-sensitive use cases
+- API: Better for quick prototypes, one-off tasks, or when infrastructure is limited
+- Quality difference may be minimal for many use cases
+
+**Pattern:** Evaluate volume, cost sensitivity, and infrastructure → Choose transcription method
+
+**Tradeoff:**
+- **Open-source:** Free but requires infrastructure and setup
+- **API:** Easy but costs money and less control
+
+---
+
+### Google Drive Integration as Persistence Strategy
+
+**Problem:** Colab sessions are ephemeral; need persistent file storage
+
+**Solution:** Mount Google Drive to access files across sessions
+
+**Key Learning:**
+- Colab sessions don't persist files between disconnects
+- Google Drive mounting bridges ephemeral compute with persistent storage
+- Pattern mirrors production: compute (ephemeral) + storage (persistent)
+- Essential for workflows that process external files
+
+**Pattern:** Ephemeral compute → Mount persistent storage → Access files
+
+**Tradeoff:**
+- **Drive mounting:** Persistent but requires Google account and setup
+- **Upload each session:** Simple but repetitive
+
+---
+
+### Structured Output Generation
+
+**Problem:** Raw transcripts are unstructured; need formatted meeting minutes
+
+**Solution:** Use system prompts to guide LLM output format
+
+**Key Learning:**
+- LLMs excel at transforming unstructured text into structured formats
+- System prompts define output structure (summary, discussion points, action items)
+- Structured prompts produce consistent, parseable outputs
+- This pattern applies to any unstructured → structured transformation
+
+**Pattern:** Unstructured input + Structured prompt → Structured output
+
+**Tradeoff:**
+- **Structured prompts:** More tokens but consistent output
+- **Free-form prompts:** Fewer tokens but inconsistent format
+
+---
+
+### Real-World Application Pattern
+
+**Problem:** Need to understand how this workflow applies beyond meeting minutes
+
+**Solution:** Recognize the generalizable pattern: Audio → Text → Structured Analysis
+
+**Key Learning:**
+- Pattern applies to: interviews, lectures, podcasts, customer calls, depositions
+- Each stage can be optimized independently
+- Transcription quality directly impacts downstream analysis quality
+- System prompts can be adapted for different output structures
+
+**Pattern:** Audio source → Transcription → Domain-specific analysis → Structured output
+
+**Tradeoff:**
+- **Generic workflow:** Reusable but may need customization
+- **Custom workflow:** Optimized but less reusable
 
 ---
 
