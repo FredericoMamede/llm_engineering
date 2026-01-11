@@ -1,0 +1,16 @@
+# Core dependencies
+torch>=2.0.0
+transformers>=4.35.0
+huggingface-hub>=0.19.0
+openai>=1.0.0
+gradio>=4.0.0
+requests>=2.31.0
+python-dotenv>=1.0.0
+
+# Optional: For quantization (HuggingFace models)
+bitsandbytes>=0.41.0
+accelerate>=0.25.0
+
+# Optional: For experiments
+jupyter>=1.0.0
+ipykernel>=6.25.0

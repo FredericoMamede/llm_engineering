@@ -1,0 +1,32 @@
+# Generated outputs
+outputs/generated_samples/*.json
+outputs/generated_samples/*.jsonl
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Gradio cache
+.gradio/
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# Environment files
+.env
+.env.local
+
+# Model cache (if downloaded locally)
+*.safetensors
+*.bin
+*.pt
+*.pth
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Personal reference guides (not for git)
+HUGGINGFACE_CACHE_GUIDE.md
