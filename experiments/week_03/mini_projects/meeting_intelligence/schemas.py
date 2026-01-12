@@ -11,7 +11,7 @@ from typing import List, Optional, Dict, Any
 
 @dataclass
 class ActionItem:
-    """An action item from the meeting"""
+    """Represents a single action item with owner and optional due date."""
     task: str
     owner: str
     due_date: Optional[str] = None
@@ -19,7 +19,7 @@ class ActionItem:
 
 @dataclass
 class Decision:
-    """A decision made during the meeting"""
+    """Represents a decision with optional rationale and impact analysis."""
     decision: str
     rationale: Optional[str] = None
     impact: Optional[str] = None
@@ -45,7 +45,7 @@ class MeetingIntelligence:
 
 
 def meeting_to_dict(meeting: MeetingIntelligence) -> Dict[str, Any]:
-    """Convert MeetingIntelligence to dictionary for JSON serialization"""
+    """Serializes MeetingIntelligence dataclass to JSON-compatible dictionary."""
     return {
         "summary": meeting.summary,
         "decisions": [
@@ -71,19 +71,17 @@ def meeting_to_dict(meeting: MeetingIntelligence) -> Dict[str, Any]:
 
 def validate_meeting_dict(data: Any) -> bool:
     """
-    Lightweight validation of meeting intelligence dictionary.
+    Validates dictionary structure against MeetingIntelligence schema.
     
-    Checks for required fields and basic structure.
-    Returns True if valid, False otherwise.
+    Ensures required 'summary' field exists and optional list fields
+    are properly typed when present.
     """
     if not isinstance(data, dict):
         return False
     
-    # Required field
     if "summary" not in data or not isinstance(data["summary"], str):
         return False
     
-    # Optional but should be lists if present
     for field_name in ["decisions", "action_items", "risks", "open_questions"]:
         if field_name in data and not isinstance(data[field_name], list):
             return False

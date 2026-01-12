@@ -21,7 +21,9 @@ from transformers import (
     AutoTokenizer,
     AutoModelForCausalLM,
     BitsAndBytesConfig,
+    TextIteratorStreamer,
 )
+from threading import Thread
 from huggingface_hub import login
 
 from schemas import validate_meeting_dict
@@ -48,15 +50,10 @@ class MeetingExtractor:
         max_new_tokens: int = 1500
     ):
         """
-        Initialize the extractor.
+        Initializes the extractor with model configuration.
         
-        Args:
-            model_name: HuggingFace model identifier
-            use_quantization: Whether to use 4-bit quantization (saves memory)
-            device: Device to use ('cuda', 'cpu', 'mps', or None for auto)
-            hf_token: HuggingFace token for gated models (or use HF_TOKEN env var)
-            temperature: Generation temperature (lower = more structured)
-            max_new_tokens: Maximum tokens to generate (token budget for output)
+        Model is lazy-loaded on first extraction call. Quantization reduces
+        VRAM usage from ~6.4GB to ~1.5-2GB at the cost of slight quality degradation.
         """
         self.model_name = model_name
         self.use_quantization = use_quantization
@@ -65,11 +62,9 @@ class MeetingExtractor:
         self.temperature = temperature
         self.max_new_tokens = max_new_tokens
         
-        # Authenticate if token provided
         if self.hf_token:
             login(token=self.hf_token, add_to_git_credential=False)
         
-        # Model and tokenizer (lazy loaded)
         self._tokenizer = None
         self._model = None
     
@@ -132,7 +127,7 @@ class MeetingExtractor:
             ) from e
     
     def _load_prompt_template(self) -> str:
-        """Load the prompt template from prompts/meeting_analysis.md"""
+        """Loads prompt template from prompts/meeting_analysis.md."""
         prompt_path = Path(__file__).parent / "prompts" / "meeting_analysis.md"
         
         try:
@@ -185,20 +180,11 @@ class MeetingExtractor:
     
     def extract(self, transcript_path: str) -> Dict[str, Any]:
         """
-        Extract structured information from a meeting transcript.
+        Extracts structured meeting intelligence from transcript file.
         
-        Args:
-            transcript_path: Path to meeting transcript file
-            
-        Returns:
-            Dictionary with extracted meeting information
-            
-        Raises:
-            FileNotFoundError: If transcript file doesn't exist
-            RuntimeError: If model loading or generation fails
-            ValueError: If JSON parsing fails
+        Returns validated dictionary matching MeetingIntelligence schema.
+        Raises FileNotFoundError, RuntimeError, or ValueError on failure.
         """
-        # Read transcript
         transcript_file = Path(transcript_path)
         if not transcript_file.exists():
             raise FileNotFoundError(f"Transcript file not found: {transcript_path}")
@@ -270,20 +256,96 @@ class MeetingExtractor:
         
         return result
     
+    def extract_with_streaming(
+        self,
+        transcript: str,
+        stream_callback=None
+    ) -> Dict[str, Any]:
+        """
+        Extracts meeting intelligence with token-by-token streaming.
+        
+        Uses TextIteratorStreamer to yield tokens as they're generated.
+        Callback receives each token chunk for real-time UI updates.
+        Final output is parsed and validated identically to extract().
+        """
+        self._load_model()
+        user_content = self._build_prompt(transcript)
+        
+        messages = [{"role": "user", "content": user_content}]
+        
+        try:
+            formatted_prompt = self._tokenizer.apply_chat_template(
+                messages,
+                tokenize=False,
+                add_generation_prompt=True
+            )
+        except Exception as e:
+            raise RuntimeError(
+                f"Failed to apply chat template: {e}\n"
+                f"This model requires proper chat template formatting"
+            ) from e
+        
+        inputs = self._tokenizer(
+            formatted_prompt,
+            return_tensors="pt"
+        ).to(self.device)
+        
+        streamer = TextIteratorStreamer(
+            self._tokenizer,
+            skip_prompt=True,
+            skip_special_tokens=True
+        )
+        
+        generation_kwargs = {
+            "max_new_tokens": self.max_new_tokens,
+            "temperature": self.temperature,
+            "do_sample": self.temperature > 0,
+            "pad_token_id": self._tokenizer.pad_token_id,
+            "eos_token_id": self._tokenizer.eos_token_id,
+            "streamer": streamer,
+        }
+        
+        def generate_with_streamer():
+            with torch.no_grad():
+                self._model.generate(**inputs, **generation_kwargs)
+        
+        generation_thread = Thread(target=generate_with_streamer)
+        generation_thread.start()
+        
+        generated_text = ""
+        for new_text in streamer:
+            generated_text += new_text
+            if stream_callback:
+                stream_callback(new_text)
+        
+        generation_thread.join()
+        
+        result = self._extract_json_from_text(generated_text)
+        
+        if result is None:
+            raise ValueError(
+                f"Failed to extract valid JSON from model output.\n"
+                f"Output (first 500 chars): {generated_text[:500]}"
+            )
+        
+        if not validate_meeting_dict(result):
+            raise ValueError(
+                f"Extracted JSON does not match expected schema.\n"
+                f"Got: {list(result.keys())}"
+            )
+        
+        return result
+    
     def extract_to_file(
         self,
         transcript_path: str,
         output_path: Optional[str] = None
     ) -> str:
         """
-        Extracts meeting intelligence and saves to JSON file.
+        Extracts meeting intelligence and persists to JSON file.
         
-        Args:
-            transcript_path: Path to meeting transcript file
-            output_path: Output file path (auto-generated with timestamp if None)
-            
-        Returns:
-            Path to saved output file
+        Auto-generates timestamped filename if output_path not provided.
+        Returns absolute path to saved file.
         """
         result = self.extract(transcript_path)
         
@@ -315,5 +377,5 @@ class MeetingExtractor:
         gc.collect()
     
     def __del__(self):
-        """Cleanup on object deletion."""
+        """Releases resources on object destruction."""
         self.unload()
