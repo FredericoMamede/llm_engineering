@@ -1,19 +1,32 @@
 """
 Meeting Intelligence Extractor
 
-Extracts structured information from meeting transcripts using LLMs.
+Extracts structured information from meeting transcripts using Llama 3.2 3B Instruct.
+
+Uses 4-bit quantization for memory efficiency and applies chat templates
+for proper instruction formatting. Handles JSON extraction with fallback
+parsing for markdown-wrapped or malformed outputs.
 """
 
 import os
 import json
+import re
+import torch
+import gc
 from typing import Optional, Dict, Any
-from openai import OpenAI
+from pathlib import Path
 from dotenv import load_dotenv
 
-from schemas import MeetingIntelligence, meeting_to_dict
+from transformers import (
+    AutoTokenizer,
+    AutoModelForCausalLM,
+    BitsAndBytesConfig,
+)
+from huggingface_hub import login
 
+from schemas import validate_meeting_dict
 
-# Load environment variables
+# Load environment variables from .env file
 load_dotenv()
 
 
@@ -21,92 +34,154 @@ class MeetingExtractor:
     """
     Extracts structured information from meeting transcripts.
     
-    Uses OpenAI API to analyze meeting text and extract:
-    - Key decisions
-    - Action items
-    - Attendees
-    - Topics
-    - Summary
+    Uses HuggingFace transformers with Llama 3.2 3B Instruct.
+    Applies chat templates correctly and handles JSON extraction robustly.
     """
     
     def __init__(
         self,
-        model: str = "gpt-4o-mini",
-        api_key: Optional[str] = None,
-        temperature: float = 0.3
+        model_name: str = "meta-llama/Llama-3.2-3B-Instruct",
+        use_quantization: bool = True,
+        device: Optional[str] = None,
+        hf_token: Optional[str] = None,
+        temperature: float = 0.3,
+        max_new_tokens: int = 1500
     ):
         """
         Initialize the extractor.
         
         Args:
-            model: OpenAI model to use (default: gpt-4o-mini)
-            api_key: OpenAI API key (or use OPENAI_API_KEY env var)
+            model_name: HuggingFace model identifier
+            use_quantization: Whether to use 4-bit quantization (saves memory)
+            device: Device to use ('cuda', 'cpu', 'mps', or None for auto)
+            hf_token: HuggingFace token for gated models (or use HF_TOKEN env var)
             temperature: Generation temperature (lower = more structured)
+            max_new_tokens: Maximum tokens to generate (token budget for output)
         """
-        self.model = model
+        self.model_name = model_name
+        self.use_quantization = use_quantization
+        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+        self.hf_token = hf_token or os.getenv("HF_TOKEN")
         self.temperature = temperature
-        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
+        self.max_new_tokens = max_new_tokens
         
-        if not self.api_key:
-            raise ValueError(
-                "OpenAI API key required. Set OPENAI_API_KEY env var or pass api_key parameter"
+        # Authenticate if token provided
+        if self.hf_token:
+            login(token=self.hf_token, add_to_git_credential=False)
+        
+        # Model and tokenizer (lazy loaded)
+        self._tokenizer = None
+        self._model = None
+    
+    def _get_quantization_config(self) -> Optional[BitsAndBytesConfig]:
+        """Returns 4-bit quantization config if enabled and CUDA is available."""
+        if not self.use_quantization or not torch.cuda.is_available():
+            return None
+        
+        return BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_use_double_quant=True,
+            bnb_4bit_compute_dtype=torch.bfloat16,
+            bnb_4bit_quant_type="nf4"
+        )
+    
+    def _load_model(self):
+        """Lazy loads model and tokenizer on first use."""
+        if self._model is not None:
+            return
+        
+        try:
+            token_kwargs = {}
+            if self.hf_token:
+                token_kwargs["token"] = self.hf_token
+            
+            self._tokenizer = AutoTokenizer.from_pretrained(
+                self.model_name,
+                trust_remote_code=True,
+                **token_kwargs
             )
-        
-        self.client = OpenAI(api_key=self.api_key)
+            
+            if self._tokenizer.pad_token is None:
+                self._tokenizer.pad_token = self._tokenizer.eos_token
+            
+            quant_config = self._get_quantization_config()
+            
+            if quant_config:
+                self._model = AutoModelForCausalLM.from_pretrained(
+                    self.model_name,
+                    device_map="auto",
+                    quantization_config=quant_config,
+                    trust_remote_code=True,
+                    **token_kwargs
+                )
+            else:
+                self._model = AutoModelForCausalLM.from_pretrained(
+                    self.model_name,
+                    device_map="auto" if self.device == "cuda" else None,
+                    trust_remote_code=True,
+                    **token_kwargs
+                )
+                if self.device != "cuda":
+                    self._model = self._model.to(self.device)
+            
+        except Exception as e:
+            raise RuntimeError(
+                f"Failed to load model '{self.model_name}': {str(e)}\n"
+                f"Check: 1) Model name is correct, 2) You have access (for gated models), "
+                f"3) HF token is set (for gated models)"
+            ) from e
     
     def _load_prompt_template(self) -> str:
         """Load the prompt template from prompts/meeting_analysis.md"""
-        prompt_path = os.path.join(
-            os.path.dirname(__file__),
-            "prompts",
-            "meeting_analysis.md"
-        )
+        prompt_path = Path(__file__).parent / "prompts" / "meeting_analysis.md"
         
         try:
             with open(prompt_path, "r", encoding="utf-8") as f:
                 return f.read()
         except FileNotFoundError:
-            # Fallback prompt if file doesn't exist
-            return self._default_prompt()
+            raise FileNotFoundError(
+                f"Prompt template not found: {prompt_path}\n"
+                f"Please ensure prompts/meeting_analysis.md exists"
+            )
     
-    def _default_prompt(self) -> str:
-        """Default prompt if template file is missing"""
-        return """You are a meeting intelligence system. Extract structured information from the meeting transcript below.
-
-Extract:
-1. Meeting title, date, duration
-2. List of attendees and organizer
-3. A concise summary (2-3 paragraphs)
-4. Topics discussed (with summaries)
-5. Decisions made (with rationale and impact)
-6. Action items (with owner, due date, priority)
-7. Key insights
-8. Next steps
-
-Output ONLY valid JSON matching this schema:
-{
-  "title": "Meeting Title",
-  "date": "YYYY-MM-DD",
-  "duration_minutes": 60,
-  "attendees": ["Name1", "Name2"],
-  "organizer": "Name",
-  "summary": "Meeting summary...",
-  "topics": [
-    {"topic": "Topic name", "summary": "Summary", "duration_minutes": 15}
-  ],
-  "decisions": [
-    {"decision": "Decision text", "rationale": "Why", "impact": "Impact"}
-  ],
-  "action_items": [
-    {"item": "Action", "owner": "Name", "due_date": "YYYY-MM-DD", "priority": "high"}
-  ],
-  "key_insights": ["Insight 1", "Insight 2"],
-  "next_steps": ["Step 1", "Step 2"],
-  "metadata": {}
-}
-
-Meeting transcript:
-{transcript}"""
+    def _build_prompt(self, transcript: str) -> str:
+        """Builds prompt from template, replacing {transcript} placeholder."""
+        template = self._load_prompt_template()
+        
+        if "{transcript}" in template:
+            return template.replace("{transcript}", transcript)
+        else:
+            return f"{template}\n\nMeeting transcript:\n{transcript}"
+    
+    def _extract_json_from_text(self, text: str) -> Optional[Dict[str, Any]]:
+        """
+        Extracts JSON from model output with fallback parsing strategies.
+        
+        Attempts extraction in order: markdown code blocks, direct JSON objects,
+        then full text parsing.
+        """
+        json_block_pattern = r'```(?:json)?\s*(\{.*?\})\s*```'
+        match = re.search(json_block_pattern, text, re.DOTALL)
+        if match:
+            try:
+                return json.loads(match.group(1))
+            except json.JSONDecodeError:
+                pass
+        
+        json_object_pattern = r'\{.*\}'
+        match = re.search(json_object_pattern, text, re.DOTALL)
+        if match:
+            try:
+                return json.loads(match.group(0))
+            except json.JSONDecodeError:
+                pass
+        
+        try:
+            return json.loads(text.strip())
+        except json.JSONDecodeError:
+            pass
+        
+        return None
     
     def extract(self, transcript_path: str) -> Dict[str, Any]:
         """
@@ -117,44 +192,83 @@ Meeting transcript:
             
         Returns:
             Dictionary with extracted meeting information
+            
+        Raises:
+            FileNotFoundError: If transcript file doesn't exist
+            RuntimeError: If model loading or generation fails
+            ValueError: If JSON parsing fails
         """
         # Read transcript
-        with open(transcript_path, "r", encoding="utf-8") as f:
+        transcript_file = Path(transcript_path)
+        if not transcript_file.exists():
+            raise FileNotFoundError(f"Transcript file not found: {transcript_path}")
+        
+        with open(transcript_file, "r", encoding="utf-8") as f:
             transcript = f.read()
         
-        # Load prompt template
-        prompt_template = self._load_prompt_template()
+        self._load_model()
+        user_content = self._build_prompt(transcript)
         
-        # Replace placeholder if present
-        if "{transcript}" in prompt_template:
-            prompt = prompt_template.replace("{transcript}", transcript)
-        else:
-            # Append transcript if no placeholder
-            prompt = f"{prompt_template}\n\nMeeting transcript:\n{transcript}"
+        messages = [{"role": "user", "content": user_content}]
         
-        # Call OpenAI API
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": "You are a meeting intelligence system. Extract structured information and output valid JSON only."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=self.temperature,
-                max_tokens=2000,
-                response_format={"type": "json_object"}  # Force JSON output
+            formatted_prompt = self._tokenizer.apply_chat_template(
+                messages,
+                tokenize=False,
+                add_generation_prompt=True
             )
-            
-            # Parse JSON response
-            result_text = response.choices[0].message.content
-            result = json.loads(result_text)
-            
-            return result
-            
-        except json.JSONDecodeError as e:
-            raise ValueError(f"Failed to parse JSON response: {e}\nResponse: {result_text}")
         except Exception as e:
-            raise RuntimeError(f"Extraction failed: {e}")
+            raise RuntimeError(
+                f"Failed to apply chat template: {e}\n"
+                f"This model requires proper chat template formatting"
+            ) from e
+        
+        inputs = self._tokenizer(
+            formatted_prompt,
+            return_tensors="pt"
+        ).to(self.device)
+        
+        generation_kwargs = {
+            "max_new_tokens": self.max_new_tokens,
+            "temperature": self.temperature,
+            "do_sample": self.temperature > 0,
+            "pad_token_id": self._tokenizer.pad_token_id,
+            "eos_token_id": self._tokenizer.eos_token_id,
+        }
+        
+        try:
+            with torch.no_grad():
+                outputs = self._model.generate(**inputs, **generation_kwargs)
+        except Exception as e:
+            raise RuntimeError(f"Generation failed: {e}") from e
+        
+        generated_text = self._tokenizer.decode(
+            outputs[0],
+            skip_special_tokens=True
+        )
+        
+        if formatted_prompt in generated_text:
+            generated_text = generated_text[len(formatted_prompt):].strip()
+        else:
+            input_length = inputs.input_ids.shape[1]
+            output_tokens = outputs[0][input_length:]
+            generated_text = self._tokenizer.decode(output_tokens, skip_special_tokens=True)
+        
+        result = self._extract_json_from_text(generated_text)
+        
+        if result is None:
+            raise ValueError(
+                f"Failed to extract valid JSON from model output.\n"
+                f"Output (first 500 chars): {generated_text[:500]}"
+            )
+        
+        if not validate_meeting_dict(result):
+            raise ValueError(
+                f"Extracted JSON does not match expected schema.\n"
+                f"Got: {list(result.keys())}"
+            )
+        
+        return result
     
     def extract_to_file(
         self,
@@ -162,31 +276,44 @@ Meeting transcript:
         output_path: Optional[str] = None
     ) -> str:
         """
-        Extract and save to file.
+        Extracts meeting intelligence and saves to JSON file.
         
         Args:
-            transcript_path: Path to meeting transcript
-            output_path: Output file path (auto-generated if None)
+            transcript_path: Path to meeting transcript file
+            output_path: Output file path (auto-generated with timestamp if None)
             
         Returns:
-            Path to output file
+            Path to saved output file
         """
         result = self.extract(transcript_path)
         
-        # Generate output path if not provided
         if output_path is None:
             import datetime
-            base_name = os.path.splitext(os.path.basename(transcript_path))[0]
+            base_name = Path(transcript_path).stem
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            output_dir = os.path.join(
-                os.path.dirname(__file__),
-                "sample_outputs"
-            )
-            os.makedirs(output_dir, exist_ok=True)
-            output_path = os.path.join(output_dir, f"{base_name}_{timestamp}.json")
+            output_dir = Path(__file__).parent / "sample_outputs"
+            output_dir.mkdir(parents=True, exist_ok=True)
+            output_path = output_dir / f"{base_name}_{timestamp}.json"
         
-        # Save to file
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(result, f, indent=2, ensure_ascii=False)
         
-        return output_path
+        return str(output_path)
+    
+    def unload(self):
+        """Releases model and tokenizer from memory and clears CUDA cache."""
+        if self._model is not None:
+            del self._model
+            self._model = None
+        
+        if self._tokenizer is not None:
+            del self._tokenizer
+            self._tokenizer = None
+        
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        gc.collect()
+    
+    def __del__(self):
+        """Cleanup on object deletion."""
+        self.unload()

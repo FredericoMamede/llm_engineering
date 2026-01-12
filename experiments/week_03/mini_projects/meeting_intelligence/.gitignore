@@ -1,0 +1,41 @@
+# Environment variables (sensitive credentials)
+.env
+.env.local
+.env.*.local
+
+# Generated output files
+sample_outputs/
+outputs/
+
+# Sample inputs (ignore user-added files, but keep example)
+# Note: sample_inputs/meeting.txt (example) should be tracked
+sample_inputs/*
+!sample_inputs/.gitkeep
+!sample_inputs/meeting.txt
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# HuggingFace cache (optional - usually in ~/.cache/huggingface/)
+# Uncomment if you want to ignore local HF cache
+# .cache/

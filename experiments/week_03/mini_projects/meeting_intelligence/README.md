@@ -202,7 +202,33 @@ Not when it has “more features”.
 
 ---
 
-## ▶️ Running the Project (Planned)
+## ⚙️ Setup
+
+### 1. Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 2. Configure Environment
+
+Create a `.env` file in the project root:
+
+```bash
+# .env
+HF_TOKEN=your_huggingface_token_here
+```
+
+**Get your HuggingFace token:**
+- Visit https://huggingface.co/settings/tokens
+- Create a token with "Read" permissions
+- Required for accessing gated models like `meta-llama/Llama-3.2-3B-Instruct`
+
+**Note:** The `.env` file is automatically loaded by `python-dotenv`. Never commit this file to git.
+
+---
+
+## ▶️ Running the Project
 
 ```bash
 python run.py \

@@ -2,20 +2,19 @@
 Schema definitions for meeting intelligence output.
 
 Defines the structure of extracted meeting information.
+Focused on actionable business intelligence.
 """
 
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any
-from datetime import datetime
 
 
 @dataclass
 class ActionItem:
     """An action item from the meeting"""
-    item: str
+    task: str
     owner: str
     due_date: Optional[str] = None
-    priority: Optional[str] = None  # "high", "medium", "low"
 
 
 @dataclass
@@ -27,54 +26,28 @@ class Decision:
 
 
 @dataclass
-class Topic:
-    """A topic discussed in the meeting"""
-    topic: str
-    summary: str
-    duration_minutes: Optional[int] = None
-
-
-@dataclass
 class MeetingIntelligence:
-    """Complete structured output from meeting analysis"""
-    # Basic info
-    title: str
-    date: Optional[str] = None
-    duration_minutes: Optional[int] = None
+    """
+    Complete structured output from meeting analysis.
     
-    # Participants
-    attendees: List[str] = field(default_factory=list)
-    organizer: Optional[str] = None
-    
-    # Content
+    Focused on actionable business intelligence:
+    - Summary for quick understanding
+    - Decisions for tracking what was decided
+    - Action items for accountability
+    - Risks for proactive management
+    - Open questions for follow-up
+    """
     summary: str
-    topics: List[Topic] = field(default_factory=list)
     decisions: List[Decision] = field(default_factory=list)
     action_items: List[ActionItem] = field(default_factory=list)
-    
-    # Metadata
-    key_insights: List[str] = field(default_factory=list)
-    next_steps: List[str] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    risks: List[str] = field(default_factory=list)
+    open_questions: List[str] = field(default_factory=list)
 
 
 def meeting_to_dict(meeting: MeetingIntelligence) -> Dict[str, Any]:
     """Convert MeetingIntelligence to dictionary for JSON serialization"""
     return {
-        "title": meeting.title,
-        "date": meeting.date,
-        "duration_minutes": meeting.duration_minutes,
-        "attendees": meeting.attendees,
-        "organizer": meeting.organizer,
         "summary": meeting.summary,
-        "topics": [
-            {
-                "topic": t.topic,
-                "summary": t.summary,
-                "duration_minutes": t.duration_minutes
-            }
-            for t in meeting.topics
-        ],
         "decisions": [
             {
                 "decision": d.decision,
@@ -85,14 +58,34 @@ def meeting_to_dict(meeting: MeetingIntelligence) -> Dict[str, Any]:
         ],
         "action_items": [
             {
-                "item": a.item,
+                "task": a.task,
                 "owner": a.owner,
-                "due_date": a.due_date,
-                "priority": a.priority
+                "due_date": a.due_date
             }
             for a in meeting.action_items
         ],
-        "key_insights": meeting.key_insights,
-        "next_steps": meeting.next_steps,
-        "metadata": meeting.metadata
+        "risks": meeting.risks,
+        "open_questions": meeting.open_questions
     }
+
+
+def validate_meeting_dict(data: Any) -> bool:
+    """
+    Lightweight validation of meeting intelligence dictionary.
+    
+    Checks for required fields and basic structure.
+    Returns True if valid, False otherwise.
+    """
+    if not isinstance(data, dict):
+        return False
+    
+    # Required field
+    if "summary" not in data or not isinstance(data["summary"], str):
+        return False
+    
+    # Optional but should be lists if present
+    for field_name in ["decisions", "action_items", "risks", "open_questions"]:
+        if field_name in data and not isinstance(data[field_name], list):
+            return False
+    
+    return True
