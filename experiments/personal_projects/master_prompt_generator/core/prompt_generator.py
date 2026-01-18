@@ -100,23 +100,33 @@ class PromptGenerator:
     
     def _get_model_profile(self, model_name: str) -> Optional[Dict]:
         """Get profile for a specific model."""
-        # Map model name to profile key
-        model_lower = model_name.lower()
+        # Use ModelManager's get_model_profile for consistency
+        # This handles model name matching more accurately
+        profile = self.model_manager.get_model_profile(model_name)
         
+        # Fallback to simple key-based lookup if ModelManager returns None
+        if profile:
+            return profile
+        
+        # Simple fallback
+        model_lower = model_name.lower()
         if "claude" in model_lower:
-            return self.model_profiles.get("claude")
+            profile = self.model_profiles.get("claude")
         elif "gpt" in model_lower:
-            return self.model_profiles.get("gpt")
+            profile = self.model_profiles.get("gpt")
         elif "gemini" in model_lower:
-            return self.model_profiles.get("gemini")
+            profile = self.model_profiles.get("gemini")
         elif "llama" in model_lower:
-            return self.model_profiles.get("llama")
+            profile = self.model_profiles.get("llama")
         elif "qwen" in model_lower:
-            return self.model_profiles.get("qwen")
+            profile = self.model_profiles.get("qwen")
         elif "deepseek" in model_lower:
-            return self.model_profiles.get("deepseek")
+            profile = self.model_profiles.get("deepseek")
         else:
-            return self.model_profiles.get("generic")
+            profile = self.model_profiles.get("generic")
+        
+        # Ensure profile is a dict
+        return profile if isinstance(profile, dict) else None
     
     def _build_meta_prompt(
         self,
@@ -200,8 +210,17 @@ Provide the prompt in this structure:
         adaptations_applied = []
         adapted = prompt_text
         
-        # Get adaptation rules
-        adaptations = model_profile.get("adaptations", {})
+        # Get adaptation rules - YAML has adaptations as a list of dicts
+        adaptations_list = model_profile.get("adaptations", [])
+        
+        # Convert list of dicts to a flat dict for easier access
+        adaptations = {}
+        if isinstance(adaptations_list, list):
+            for item in adaptations_list:
+                if isinstance(item, dict):
+                    adaptations.update(item)
+        elif isinstance(adaptations_list, dict):
+            adaptations = adaptations_list
         
         # Apply adaptations based on profile
         if adaptations.get("add_reasoning_framing") and "Let's think" not in adapted:
@@ -286,9 +305,13 @@ Provide the prompt in this structure:
         
         generated_text = response.choices[0].message.content
         
+        # Ensure we have content
+        if not generated_text or not generated_text.strip():
+            raise ValueError("Generated prompt is empty")
+        
         # Parse system/user prompts from generated text
         system_prompt = None
-        user_prompt = generated_text
+        user_prompt = generated_text.strip()
         
         if "System Prompt" in generated_text:
             parts = generated_text.split("User Prompt:")
@@ -296,6 +319,10 @@ Provide the prompt in this structure:
                 system_part = parts[0].replace("System Prompt", "").replace(":", "").strip()
                 system_prompt = system_part if system_part else None
                 user_prompt = parts[1].split("Notes:")[0].strip()
+        
+        # Ensure user_prompt is never empty
+        if not user_prompt or not user_prompt.strip():
+            user_prompt = generated_text.strip()
         
         full_prompt = f"{system_prompt}\n\n{user_prompt}" if system_prompt else user_prompt
         

@@ -138,6 +138,10 @@ class ModelManager:
             if profile_key == "adaptation_rules" or profile_key == "generic":
                 continue
             
+            # Skip if profile_data is not a dict (defensive check)
+            if not isinstance(profile_data, dict):
+                continue
+            
             models = profile_data.get("models", [])
             if any(model_lower in m.lower() or m.lower() in model_lower for m in models):
                 return profile_data
@@ -199,6 +203,10 @@ class ModelManager:
         
         for profile_key, profile_data in self.model_profiles.items():
             if profile_key in ["adaptation_rules", "generic"]:
+                continue
+            
+            # Skip if profile_data is not a dict (defensive check)
+            if not isinstance(profile_data, dict):
                 continue
             
             profile_models = profile_data.get("models", [])

@@ -85,6 +85,8 @@ class PromptRefiner:
         """
         # Create temporary metadata for comparison
         temp_metadata = PromptWithMetadata(
+            system_prompt=original_prompt.system_prompt,
+            user_prompt=refined_prompt_text,  # Use refined text as user prompt for comparison
             full_prompt=refined_prompt_text,
             target_model=original_prompt.target_model,
             version="temp"

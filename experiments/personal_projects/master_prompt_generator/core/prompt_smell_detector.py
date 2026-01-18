@@ -162,20 +162,37 @@ class PromptSmellDetector:
         for pattern_def in self.patterns:
             # Handle different pattern types
             if "pattern" in pattern_def:
-                matches = re.finditer(pattern_def["pattern"], prompt_lower, re.IGNORECASE | re.DOTALL)
-                for match in matches:
-                    detected.append(self._create_anti_pattern(pattern_def, match, prompt))
+                try:
+                    pattern = pattern_def["pattern"]
+                    if pattern and isinstance(pattern, str) and len(pattern) > 0:
+                        matches = re.finditer(pattern, prompt_lower, re.IGNORECASE | re.DOTALL)
+                        for match in matches:
+                            detected.append(self._create_anti_pattern(pattern_def, match, prompt))
+                except re.error:
+                    # Skip invalid regex patterns
+                    continue
             
             elif "patterns" in pattern_def:
                 # Multiple patterns that must both match (conflicting)
-                for pattern_pair in pattern_def["patterns"]:
-                    if re.search(pattern_pair[0], prompt_lower) and re.search(pattern_pair[1], prompt_lower):
-                        detected.append(self._create_anti_pattern(pattern_def, None, prompt, is_conflict=True))
+                try:
+                    for pattern_pair in pattern_def["patterns"]:
+                        if (isinstance(pattern_pair, (list, tuple)) and len(pattern_pair) >= 2 and
+                            isinstance(pattern_pair[0], str) and isinstance(pattern_pair[1], str) and
+                            len(pattern_pair[0]) > 0 and len(pattern_pair[1]) > 0):
+                            if re.search(pattern_pair[0], prompt_lower) and re.search(pattern_pair[1], prompt_lower):
+                                detected.append(self._create_anti_pattern(pattern_def, None, prompt, is_conflict=True))
+                except re.error:
+                    # Skip invalid regex patterns
+                    continue
             
             elif "check" in pattern_def:
                 # Custom check function
-                if pattern_def["check"](None, prompt):
-                    detected.append(self._create_anti_pattern(pattern_def, None, prompt))
+                try:
+                    if pattern_def["check"](None, prompt):
+                        detected.append(self._create_anti_pattern(pattern_def, None, prompt))
+                except Exception:
+                    # Skip check functions that fail
+                    continue
         
         # Remove duplicates and sort by severity
         detected = self._deduplicate(detected)
@@ -228,10 +245,16 @@ class PromptSmellDetector:
             base_confidence += 0.1
         
         # Increase if multiple matches
-        if match:
-            all_matches = list(re.finditer(pattern_def.get("pattern", ""), prompt.lower()))
-            if len(all_matches) > 1:
-                base_confidence += 0.1
+        if match and "pattern" in pattern_def:
+            pattern = pattern_def["pattern"]
+            if pattern and isinstance(pattern, str) and len(pattern) > 0:
+                try:
+                    all_matches = list(re.finditer(pattern, prompt.lower()))
+                    if len(all_matches) > 1:
+                        base_confidence += 0.1
+                except re.error:
+                    # Invalid regex pattern - skip confidence boost
+                    pass
         
         return min(1.0, base_confidence)
     
