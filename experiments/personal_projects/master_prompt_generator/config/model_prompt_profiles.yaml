@@ -1,0 +1,253 @@
+# Model-Specific Prompt Adaptation Profiles
+# 
+# This file defines how prompts should be adapted for different LLM models.
+# The generator uses these profiles to optimize prompts for each model's preferences,
+# strengths, and characteristics.
+
+claude:
+  name: "Claude (Anthropic)"
+  models:
+    - "claude-sonnet-4-5-20250929"
+    - "claude-3-5-sonnet-20241022"
+    - "claude-3-5-haiku-20241022"
+    - "claude-3-opus-20240229"
+  
+  prefers:
+    - explicit_reasoning_framing: true
+      description: "Claude responds well to explicit reasoning instructions"
+      example: "Let's think through this step by step:"
+    
+    - polite_constraints: true
+      description: "Polite, conversational constraints work better than harsh directives"
+      example: "Please ensure..." instead of "You must..."
+    
+    - longer_context: true
+      description: "Claude handles longer context well, can include more examples"
+      max_examples: 5
+      preferred_context_length: "medium-to-long"
+    
+    - softer_directives: true
+      description: "Gentle guidance preferred over strict commands"
+      example: "Consider including..." vs "You must include..."
+    
+    - structured_thinking: true
+      description: "Explicit structure for complex reasoning"
+      example: "First, analyze... Then, evaluate... Finally, conclude..."
+  
+  avoids:
+    - overly_concise: "Claude prefers more context"
+    - harsh_directives: "Use polite language"
+    - minimal_examples: "Include sufficient examples"
+  
+  adaptations:
+    - add_reasoning_framing: true
+    - soften_directives: true
+    - expand_context: true
+    - add_structure_guidance: true
+
+gpt:
+  name: "GPT (OpenAI)"
+  models:
+    - "gpt-5"
+    - "gpt-4o"
+    - "gpt-4-turbo"
+    - "gpt-4"
+    - "gpt-3.5-turbo"
+  
+  prefers:
+    - strict_schemas: true
+      description: "GPT responds well to explicit JSON schemas"
+      example: "Return JSON with exact structure: {...}"
+    
+    - explicit_json_formatting: true
+      description: "Clear JSON format requirements"
+      example: "Output ONLY valid JSON, no markdown, no explanations"
+    
+    - concise_structure: true
+      description: "GPT prefers concise, well-structured prompts"
+      preferred_context_length: "medium"
+    
+    - deterministic_instructions: true
+      description: "Clear, unambiguous instructions work best"
+      example: "Generate exactly 3 examples" vs "Generate some examples"
+    
+    - numbered_steps: true
+      description: "Numbered lists for multi-step tasks"
+      example: "1. First... 2. Then... 3. Finally..."
+  
+  avoids:
+    - ambiguous_instructions: "Be explicit and specific"
+    - verbose_context: "Keep prompts concise but complete"
+    - loose_formatting: "Specify exact output format"
+  
+  adaptations:
+    - enforce_json_schema: true
+    - add_numbered_steps: true
+    - clarify_instructions: true
+    - optimize_for_conciseness: true
+
+gemini:
+  name: "Gemini (Google)"
+  models:
+    - "gemini-2.5-pro"
+    - "gemini-2.5-flash-lite"
+    - "gemini-1.5-pro"
+    - "gemini-1.5-flash"
+  
+  prefers:
+    - clear_task_definition: true
+      description: "Gemini needs very clear task boundaries"
+      example: "Your task is to: [specific task]"
+    
+    - example_rich: true
+      description: "Gemini benefits from multiple examples"
+      max_examples: 3-4
+      preferred_context_length: "medium"
+    
+    - format_specification: true
+      description: "Explicit format requirements"
+      example: "Format: [description]"
+    
+    - constraint_clarity: true
+      description: "Clear, unambiguous constraints"
+      example: "Must include: X, Y, Z. Must not include: A, B, C"
+  
+  avoids:
+    - vague_instructions: "Be very specific"
+    - insufficient_examples: "Include 2-3 examples"
+    - ambiguous_constraints: "Make constraints explicit"
+  
+  adaptations:
+    - clarify_task_boundaries: true
+    - add_examples: true
+    - specify_format_explicitly: true
+    - clarify_constraints: true
+
+llama:
+  name: "Llama (Meta)"
+  models:
+    - "llama-3.2-8b"
+    - "llama-3.2-3b"
+    - "llama-3.1-8b"
+    - "llama-3.1-70b"
+  
+  prefers:
+    - short_directive_instructions: true
+      description: "Llama works best with short, directive instructions"
+      example: "Summarize the text. Output format: JSON."
+    
+    - fewer_nested_constraints: true
+      description: "Avoid deeply nested conditional logic"
+      preferred_structure: "flat"
+    
+    - minimal_verbosity: true
+      description: "Keep prompts concise, avoid unnecessary words"
+      preferred_context_length: "short-to-medium"
+    
+    - explicit_format_markers: true
+      description: "Use clear format delimiters"
+      example: "```json\n{...}\n```"
+    
+    - simple_role_definitions: true
+      description: "Simple role definitions work better than complex personas"
+      example: "You are a helpful assistant." vs long persona descriptions
+  
+  avoids:
+    - excessive_verbosity: "Keep prompts concise"
+    - complex_nesting: "Use flat structure"
+    - long_context: "Optimize for shorter prompts"
+    - complex_personas: "Use simple role definitions"
+  
+  adaptations:
+    - shorten_instructions: true
+    - flatten_structure: true
+    - reduce_verbosity: true
+    - simplify_role_definition: true
+
+qwen:
+  name: "Qwen (Alibaba)"
+  models:
+    - "qwen2.5-coder"
+    - "qwen2.5-72b"
+    - "qwen2-72b"
+  
+  prefers:
+    - technical_precision: true
+      description: "Qwen excels with technical, precise instructions"
+      example: "Generate Python code with type hints"
+    
+    - code_focused: true
+      description: "Strong performance on code-related tasks"
+      code_specific_adaptations: true
+    
+    - structured_output: true
+      description: "Works well with structured formats"
+      preferred_format: "JSON or code"
+    
+    - explicit_requirements: true
+      description: "Clear, explicit requirements"
+      example: "Requirements: 1. Type hints 2. Docstrings 3. Error handling"
+  
+  avoids:
+    - vague_technical_terms: "Be technically precise"
+    - unstructured_output: "Specify output structure"
+  
+  adaptations:
+    - emphasize_technical_precision: true
+    - add_code_specific_guidance: true
+    - structure_output_requirements: true
+
+deepseek:
+  name: "DeepSeek"
+  models:
+    - "deepseek-coder-v2"
+    - "deepseek-chat"
+  
+  prefers:
+    - reasoning_explicit: true
+      description: "DeepSeek benefits from explicit reasoning steps"
+      example: "Step 1: Analyze... Step 2: Evaluate... Step 3: Generate..."
+    
+    - code_optimization_focus: true
+      description: "Strong on code optimization tasks"
+      code_specific: true
+    
+    - problem_decomposition: true
+      description: "Break complex problems into steps"
+      example: "First, identify the problem. Then, design solution..."
+  
+  adaptations:
+    - add_reasoning_steps: true
+    - decompose_problems: true
+    - emphasize_code_quality: true
+
+# Generic fallback profile
+generic:
+  name: "Generic (Unknown Model)"
+  prefers:
+    - clear_instructions: true
+    - explicit_format: true
+    - sufficient_context: true
+  
+  adaptations:
+    - apply_best_practices: true
+    - ensure_clarity: true
+
+# Adaptation application rules
+adaptation_rules:
+  # When to apply adaptations
+  apply_when:
+    - target_model_matches: true
+    - user_explicitly_requests: true
+    - auto_detection_enabled: true
+  
+  # How to apply
+  application_method:
+    - analyze_prompt_structure: true
+    - identify_adaptation_points: true
+    - apply_model_preferences: true
+    - explain_adaptations: true  # Show user what changed and why
+  
+  # Adaptation metadata
+  track_adaptations: true
+  adaptation_explanation_format: "Applied {adaptation} because {model} prefers {preference}"
