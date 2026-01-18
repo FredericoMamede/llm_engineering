@@ -167,7 +167,8 @@ master_prompt_generator/
 └── docs/                        # Documentation
     ├── architecture/            # Design docs
     ├── phases/                  # Phase completion docs
-    └── status/                  # Status reports
+    ├── status/                  # Status reports
+    └── testing/                 # Testing documentation
 ```
 
 ---
@@ -369,6 +370,9 @@ Prompts are evaluated on:
 ---
 
 ## 🧪 Testing
+
+- Manual UI testing scenarios: `docs/testing/UI_TESTING_EXAMPLES.md`
+
 
 ```bash
 # Run tests
