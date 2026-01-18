@@ -191,15 +191,127 @@ The minimal inspection UI provides:
 
 ## 🔧 Configuration
 
-### Model Selection
+### Supported Models
 
-**Free Tier (Recommended for testing)**:
-- Llama 3.2 8B (Ollama) - Fast, local, good quality
+The system supports a curated set of **free/open-source** and **paid/frontier** models.
 
-**Paid Tier (Recommended for production)**:
-- Claude Sonnet 4.5 - Best overall quality
-- GPT-4o - Excellent reasoning
-- Gemini 2.5 Pro - Cost-effective
+#### 🆓 Free / Open-Source Models (No API Key Required)
+
+These models run locally via Ollama (when installed and running):
+
+**Llama (Meta)**
+- `llama3.2:latest` - Latest Llama 3.2 (recommended)
+- `llama3.1:8b` - Llama 3.1 8B
+- `llama3.1:70b` - Llama 3.1 70B (requires significant resources)
+
+**Note**: LLaMA-4 requires gated Hugging Face access (see Advanced/Gated Models section below).
+
+**Mixtral (Mistral AI)**
+- `mixtral:8x7b` - Mixtral 8x7B (strong reasoning)
+
+**Note**: 8x22b not widely packaged.
+
+**Mistral (Mistral AI)**
+- `mistral:7b` - Mistral 7B
+
+**Gemma (Google)**
+- `gemma3:270m` - Gemma 3 270M (lightweight)
+- `gemma2:9b` - Gemma 2 9B
+- `gemma2:27b` - Gemma 2 27B
+
+**Qwen (Alibaba)**
+- `qwen2.5-coder` - Qwen 2.5 Coder (excellent for technical prompts)
+- `qwen2.5:72b`, `qwen2.5:32b`, `qwen2.5:14b`, `qwen2.5:7b` - Various sizes
+
+**DeepSeek**
+- `deepseek-r1` - DeepSeek R1 (reasoning)
+- `deepseek-coder-v2` - DeepSeek Coder v2 (reasoning + code)
+
+**Note**: Free models require Ollama to be installed and running locally. See [Setup Guide](SETUP.md).
+
+---
+
+#### 💳 Paid / Frontier Models (API Key Required)
+
+These models require API keys but provide best-in-class quality:
+
+**Claude (Anthropic)** - Recommended for prompt generation
+- `claude-opus` - Best reasoning + long-context
+- `claude-sonnet` - Best overall quality (recommended)
+- `claude-haiku` - Fast, cost-effective
+
+**Note**: Anthropic uses stable family names (not version-specific IDs).
+
+**Required**: `ANTHROPIC_API_KEY`
+
+**GPT (OpenAI)**
+- `gpt-5` - Latest GPT (officially released 2026)
+- `gpt-4o` - Excellent reasoning + structured output
+- `gpt-4o-mini` - Low-cost tier
+
+**Note**: Deprecated models (gpt-4-turbo, gpt-4, gpt-3.5-turbo) removed.
+
+**Required**: `OPENAI_API_KEY`
+
+**Gemini (Google)**
+- `gemini-2.5-pro` - Strong general reasoning
+- `gemini-1.5-pro` - Alternative
+- `gemini-1.5-flash` - Fast, cost-effective
+
+**Note**: Gemini 3 is experimental/preview - not included.
+
+**Required**: `GOOGLE_API_KEY`
+
+---
+
+### 🔐 Advanced / Gated Models
+
+Some models require **gated access** (approval + credentials) and are marked as **advanced**:
+
+**LLaMA-4 (Meta)** - Gated Hugging Face Access
+- `meta-llama/Llama-4-Scout-17B-16E-Instruct`
+- `meta-llama/Llama-4-Maverick-17B-128E-Instruct`
+
+**Required**: 
+- Hugging Face account with **gated model approval**
+- `HUGGINGFACE_TOKEN` environment variable
+
+**What "Gated" Means**:
+- Model requires explicit approval from the provider
+- Not available via local runtimes (e.g., Ollama)
+- Not "generally available" - requires application/approval process
+- Advanced users can enable explicitly with proper credentials
+
+**Behavior**:
+- Models appear in UI dropdown with 🔒 when token/approval missing
+- Clear error message: "Requires gated Hugging Face access"
+- No silent fallbacks or auto-selection
+- Identical behavior to paid API models (GPT, Claude)
+
+This is **intentional and transparent** - the system shows all supported models, including gated ones, so users understand what's possible with proper setup.
+
+---
+
+### Model Availability vs Capability
+
+**Critical Distinction**:
+- **Capability** = What models the system supports (defined in `model_prompt_profiles.yaml`)
+- **Availability** = What models you can actually use (based on API keys, local runtime)
+
+**Important**: Models may appear **disabled** (🔒) in the UI if:
+- Required API keys are not configured
+- Local runtime (Ollama) is not running
+- Gated access credentials are missing (for Hugging Face gated models)
+
+**Behavior**:
+- All supported models appear in the UI dropdown
+- Unavailable models are clearly marked with 🔒 and reason
+- Attempting to use an unavailable model shows a clear error message
+- No silent fallbacks or auto-selection
+
+**Model Presence ≠ Model Usability**
+
+This ensures **explicit, predictable behavior** - you always know what's available and why.
 
 ### Environment Variables
 
@@ -220,17 +332,22 @@ The minimal inspection UI provides:
    
    # Google (for Gemini models)
    GOOGLE_API_KEY=your-key-here
+   
+   # Hugging Face (for gated models like LLaMA-4)
+   HUGGINGFACE_TOKEN=hf_your-token-here
    ```
 
 3. **Getting API Keys**:
    - **Anthropic** (recommended): https://console.anthropic.com/settings/keys
    - **OpenAI**: https://platform.openai.com/api-keys
    - **Google**: https://makersuite.google.com/app/apikey
+   - **Hugging Face** (for gated models): https://huggingface.co/settings/tokens
+     - Requires gated model approval: https://huggingface.co/meta-llama/Llama-4-Scout-17B-16E-Instruct
 
 4. **Free Option**: Use Ollama locally (no API key needed)
    - Install Ollama: https://ollama.ai
    - Run: `ollama serve`
-   - Models like `llama-3.2-8b` will work without keys
+   - Models like `llama3.2:latest` will work without keys
 
 **Note**: The `.env` file is gitignored and will not be committed to version control.
 

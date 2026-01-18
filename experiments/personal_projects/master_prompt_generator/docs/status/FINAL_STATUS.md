@@ -2,6 +2,8 @@
 
 ## ✅ ALL PHASES COMPLETE
 
+**Latest Update**: Model support expanded to include top free and paid LLMs with explicit availability handling.
+
 ---
 
 ## Phase B: Core MVP ✅
@@ -46,6 +48,13 @@ Generate → Evaluate → (Refine) → Approve
 ## Phase D: Minimal UI ✅
 
 **Status**: Complete inspection console
+
+**Model Support**:
+- ✅ All supported models appear in dropdown (free + paid)
+- ✅ Availability status clearly indicated (✅ / 🔒)
+- ✅ Unavailable models show reason (API key required, Ollama offline)
+- ✅ No silent fallbacks or auto-selection
+- ✅ Explicit error messages when unavailable models selected
 
 **Shows All Required**:
 - ✅ Prompt text
@@ -175,7 +184,7 @@ prompt, history, evals = orchestrator.generate_and_approve(
     category="business",
     complexity_tier=2,
     context="Follow-up after client meeting",
-    target_model="claude-sonnet-4-5-20250929"
+    target_model="claude-sonnet"
 )
 ```
 

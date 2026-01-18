@@ -46,7 +46,7 @@ No API keys needed:
 1. Install Ollama: https://ollama.ai
 2. Run: `ollama serve`
 3. Pull a model: `ollama pull llama3.2:8b`
-4. Use models like `llama-3.2-8b` in the UI
+4. Use models like `llama3.2:latest` in the UI
 
 ---
 

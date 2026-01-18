@@ -51,13 +51,35 @@ def refine_with_tracking(self, prompt_id, ...) -> PromptWithMetadata:
 
 ---
 
-### 2. Model-Specific Prompt Adaptation
+### 2. Model Manager & Availability
+
+**Location**: `core/model_manager.py`, `config/model_prompt_profiles.yaml`
+
+**Responsibilities**:
+- Load model profiles from YAML configuration
+- Initialize LLM clients based on available API keys
+- Check Ollama runtime availability for local models
+- Provide availability status for all supported models
+- Map model names to appropriate providers
+
+**Key Methods**:
+- `get_all_supported_models()` → Returns all models with availability status
+- `check_model_availability(model_name)` → Returns (is_available, reason)
+- `get_model_profile(model_name)` → Returns model adaptation profile
+- `get_client(model_name)` → Returns initialized client or None
+
+**Integration Points**:
+- `PromptGenerator.generate()` → Uses ModelManager to get client and profile
+- UI → Uses ModelManager to populate model dropdown with availability
+- `PromptEvaluator` → Uses ModelManager for model-specific evaluation criteria
+
+### 3. Model-Specific Prompt Adaptation
 
 **Location**: `config/model_prompt_profiles.yaml`, `core/prompt_generator.py`
 
 **Integration Points**:
-- `PromptGenerator.generate()` → Loads model profile, applies adaptations
-- UI → Model selector triggers adaptation preview
+- `PromptGenerator.generate()` → Loads model profile via ModelManager, applies adaptations
+- UI → Model selector shows all models with availability status
 - `PromptEvaluator` → Considers model-specific quality criteria
 
 **Implementation Flow**:
@@ -290,7 +312,7 @@ evaluation:
 
 economics:
   show_cost_estimates: true
-  default_models: ["claude-sonnet-4-5", "gpt-4o", "llama-3.2-8b"]
+  default_models: ["claude-sonnet", "gpt-4o", "llama3.2:latest"]
   optimization_target: 0.2  # 20% reduction target
 
 lifecycle:
@@ -316,7 +338,7 @@ def test_prompt_lifecycle():
 
 def test_model_adaptation():
     generator = PromptGenerator()
-    prompt_claude = generator.generate(..., target_model="claude-sonnet-4-5")
+    prompt_claude = generator.generate(..., target_model="claude-sonnet")
     prompt_gpt = generator.generate(..., target_model="gpt-4o")
     
     # Should have different adaptations

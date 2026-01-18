@@ -6,7 +6,7 @@ No dashboards, charts, or analytics - just visibility.
 """
 
 import gradio as gr
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Dict
 import sys
 from pathlib import Path
 
@@ -16,7 +16,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from core import (
     PromptOrchestrator,
     PromptWithMetadata,
-    EvaluationResult
+    EvaluationResult,
+    LifecycleGuard,
+    VersionGuard,
+    ModelManager
 )
 
 
@@ -25,6 +28,7 @@ class UIState:
     
     def __init__(self):
         self.orchestrator = PromptOrchestrator(quality_threshold=8.0)
+        self.model_manager = ModelManager()
         self.current_prompt: Optional[PromptWithMetadata] = None
         self.current_evaluation: Optional[EvaluationResult] = None
         self.version_history: list[PromptWithMetadata] = []
@@ -34,6 +38,25 @@ class UIState:
 
 
 state = UIState()
+
+
+def get_model_display_name(model_info: Dict) -> str:
+    """Get display name for model with availability indicator."""
+    model_name = model_info["name"]
+    is_available = model_info["available"]
+    unavailable_reason = model_info.get("unavailable_reason", "")
+    
+    if is_available:
+        return f"✅ {model_name}"
+    else:
+        # Shorten reason for display
+        if "Requires API key:" in unavailable_reason:
+            env_var = unavailable_reason.replace("Requires API key: ", "")
+            return f"🔒 {model_name} (needs {env_var})"
+        elif "Ollama not running" in unavailable_reason:
+            return f"🔒 {model_name} (Ollama offline)"
+        else:
+            return f"🔒 {model_name} ({unavailable_reason})"
 
 
 def format_anti_patterns(patterns: list) -> str:
@@ -131,6 +154,12 @@ def generate_prompt(
     """
     if not use_case or not context:
         return "", "⚠️ Please provide use case and context", "", "", "", ""
+    
+    # Check model availability before generating
+    is_available, reason = state.model_manager.check_model_availability(target_model)
+    if not is_available:
+        error_msg = f"❌ Model unavailable: {reason}\n\nPlease configure required credentials or ensure local runtime is running."
+        return "", error_msg, "", "", "", ""
     
     req_list = [r.strip() for r in requirements.split("\n") if r.strip()] if requirements else []
     
@@ -307,7 +336,7 @@ def approve_prompt() -> Tuple[str, str]:
 
 def create_ui():
     """Create and return Gradio interface."""
-    with gr.Blocks(title="Master Prompt Generator", theme=gr.themes.Soft()) as ui:
+    with gr.Blocks(title="Master Prompt Generator") as ui:
         gr.Markdown("# Master Prompt Generator - Inspection Console")
         gr.Markdown("Generate, evaluate, refine, and approve prompts with full visibility.")
         
@@ -348,15 +377,39 @@ def create_ui():
                     lines=3
                 )
                 
+                # Get all supported models with availability
+                all_models = state.model_manager.get_all_supported_models()
+                model_choices = []
+                
+                for model_info in all_models:
+                    model_name = model_info["name"]
+                    is_available = model_info["available"]
+                    unavailable_reason = model_info.get("unavailable_reason", "")
+                    
+                    # Create display label with availability status
+                    if is_available:
+                        display_label = f"✅ {model_name}"
+                    else:
+                        # Shorten reason for dropdown
+                        if "Requires API key:" in unavailable_reason:
+                            env_var = unavailable_reason.replace("Requires API key: ", "")
+                            display_label = f"🔒 {model_name} (needs {env_var})"
+                        elif "Ollama not running" in unavailable_reason:
+                            display_label = f"🔒 {model_name} (Ollama offline)"
+                        else:
+                            display_label = f"🔒 {model_name}"
+                    
+                    # Store as tuple: (display_label, actual_model_name)
+                    model_choices.append((display_label, model_name))
+                
+                # Default to first available model, or first model if none available
+                default_model = next((m["name"] for m in all_models if m["available"]), all_models[0]["name"] if all_models else "claude-sonnet")
+                
                 model_input = gr.Dropdown(
                     label="Target Model",
-                    choices=[
-                        "claude-sonnet-4-5-20250929",
-                        "gpt-4o",
-                        "gemini-2.5-pro",
-                        "llama-3.2-8b"
-                    ],
-                    value="claude-sonnet-4-5-20250929"
+                    choices=model_choices,
+                    value=default_model,
+                    info="✅ = Available | 🔒 = Requires setup (API key or local runtime)"
                 )
                 
                 generate_btn = gr.Button("Generate Prompt", variant="primary")
@@ -366,7 +419,7 @@ def create_ui():
                 
                 prompt_output = gr.Code(
                     label="Prompt Text",
-                    language="text",
+                    language=None,
                     lines=15,
                     interactive=False
                 )
@@ -447,4 +500,4 @@ def create_ui():
 
 if __name__ == "__main__":
     ui = create_ui()
-    ui.launch(inbrowser=True, share=False)
+    ui.launch(inbrowser=True, share=False, theme=gr.themes.Soft())

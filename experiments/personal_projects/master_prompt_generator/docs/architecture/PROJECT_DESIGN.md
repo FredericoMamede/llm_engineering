@@ -4,6 +4,21 @@
 
 ---
 
+## ⚠️ Document Scope Note
+
+**Important**: This document includes **aspirational design elements** and comprehensive vision statements. The **current implementation intentionally focuses on**:
+
+- Prompt generation with model-specific adaptation
+- Quality evaluation (6-metric scoring)
+- Iterative refinement with versioning
+- Lifecycle & version enforcement (defensive guards)
+- Token economics analysis
+- Anti-pattern detection
+
+Some sections describe future possibilities or broader scope. The production system prioritizes **correctness, observability, and explicit behavior** over feature breadth.
+
+---
+
 ## Table of Contents
 
 1. [Executive Summary](#executive-summary)
@@ -114,27 +129,74 @@ After comprehensive analysis of the repository, we identified **700+ prompt inst
 
 ## LLM Selection
 
-### Top 5 Free/Open-Source LLMs (2025)
+### Model Support Architecture
 
-| Model | Provider | Strengths | Best For |
-|-------|----------|-----------|----------|
-| **Llama 3.2 3B/8B** | Meta (Ollama/HF) | Fast, efficient, good instruction following | General prompt generation, local deployment |
-| **Qwen 2.5 Coder** | Alibaba (Ollama) | Excellent code understanding | Code-related prompts |
-| **DeepSeek Coder v2** | DeepSeek (Ollama) | Strong reasoning, code generation | Complex reasoning prompts |
-| **Mistral 7B/8x7B** | Mistral AI (Ollama) | Balanced performance, multilingual | Multi-language prompts |
-| **Phi-3** | Microsoft (Ollama) | Small, efficient, good for simple tasks | Quick prompt generation |
+The system supports a **curated set of free/open-source and paid/frontier models** with explicit **capability vs availability** separation.
 
-**Recommendation for Free Tier**: **Llama 3.2 8B** (via Ollama) - Best balance of quality, speed, and availability
+**Key Design Principle**: 
+- **Capability** = What models the system supports (defined in `model_prompt_profiles.yaml`)
+- **Availability** = What models the user can actually use (based on API keys, local runtime)
 
-### Top 5 Paid/Frontier LLMs (2025)
+**Behavior**:
+- All supported models appear in the UI dropdown
+- Unavailable models are clearly marked (🔒) with reason
+- No silent fallbacks or auto-selection
+- Explicit error messages when unavailable models are selected
 
-| Model | Provider | Cost | Strengths | Best For |
-|-------|----------|------|-----------|----------|
-| **GPT-4o / GPT-5** | OpenAI | $5-15/1M tokens | Best overall, reasoning, JSON mode | Premium prompt generation |
-| **Claude Sonnet 4.5** | Anthropic | $3-15/1M tokens | Long context, safety, structured output | Complex, nuanced prompts |
-| **Gemini 2.5 Pro** | Google | $1.25-7/1M tokens | Multimodal, fast, cost-effective | High-volume generation |
-| **Grok 4** | x.ai | Varies | Real-time data, reasoning | Current events, research |
-| **Claude 3.5 Haiku** | Anthropic | $0.25-1.25/1M tokens | Fast, cheap, good quality | High-throughput scenarios |
+### Free/Open-Source Models (No API Key Required)
+
+These models run locally via Ollama (when installed and running):
+
+**Llama (Meta)**
+- `llama3.2:latest` - Latest Llama 3.2 (recommended for free tier)
+- `llama3.1:8b`, `llama3.1:70b` - Llama 3.1 variants
+
+**Note**: LLaMA-4 requires gated Hugging Face access (see Advanced/Gated Models section).
+
+**Mixtral (Mistral AI)**
+- `mixtral:8x7b` - Strong reasoning capabilities
+
+**Note**: 8x22b not widely packaged.
+
+**Mistral (Mistral AI)**
+- `mistral:7b`, `mistral:8x7b` - Balanced performance
+
+**Gemma (Google)**
+- `gemma3:270m`, `gemma2:9b`, `gemma2:27b` - Instruction-tuned, lightweight
+
+**Qwen (Alibaba)**
+- `qwen2.5-coder` - Excellent for technical prompts
+- `qwen2.5:72b`, `qwen2.5:32b`, `qwen2.5:14b`, `qwen2.5:7b` - Various sizes
+
+**DeepSeek**
+- `deepseek-r1`, `deepseek-coder-v2` - Reasoning + code generation
+
+**Recommendation for Free Tier**: **Llama 3.2** (via Ollama) - Best balance of quality, speed, and availability
+
+### Paid/Frontier Models (API Key Required)
+
+**Claude (Anthropic)** - Recommended for prompt generation
+- `claude-opus`, `claude-sonnet`, `claude-haiku` - Stable family names
+
+**Note**: Anthropic abstracts versions behind stable family names (not version-specific IDs).
+
+**Required**: `ANTHROPIC_API_KEY`
+
+**GPT (OpenAI)**
+- `gpt-5` - Officially released (2026)
+- `gpt-4o` - Excellent reasoning + structured output
+- `gpt-4o-mini` - Low-cost tier
+
+**Note**: Deprecated models removed.
+
+**Required**: `OPENAI_API_KEY`
+
+**Gemini (Google)**
+- `gemini-2.5-pro`, `gemini-1.5-pro`, `gemini-1.5-flash` - Confirmed available
+
+**Note**: Gemini 3 is experimental/preview - not included.
+
+**Required**: `GOOGLE_API_KEY`
 
 **Recommendation for Paid Tier**: **Claude Sonnet 4.5** - Best for prompt generation due to:
 - Excellent instruction following
@@ -142,12 +204,28 @@ After comprehensive analysis of the repository, we identified **700+ prompt inst
 - Long context window
 - Safety considerations
 
-### Hybrid Approach
+### Model Availability Handling
 
-**Recommended Strategy**:
-- **Free tier**: Use **Llama 3.2 8B** (Ollama) for quick iterations, testing
-- **Paid tier**: Use **Claude Sonnet 4.5** for final, production-ready prompts
-- **Fallback**: GPT-4o for when Claude is unavailable
+**Why Disabled Models Still Appear**:
+- Transparency: Users see all supported models, not just available ones
+- Education: Clear indication of what's possible with proper setup
+- Predictability: No hidden models or silent exclusions
+
+**Availability Checks**:
+- API key presence (for paid models)
+- Local runtime status (for Ollama models)
+- Gated access credentials (for Hugging Face gated models)
+- Client initialization success
+
+**Model Tiers**:
+- **Free/Local**: Ollama models (LLaMA 3.1/3.2, etc.)
+- **Paid/API**: OpenAI, Anthropic, Google models
+- **Gated/Advanced**: Hugging Face gated models (LLaMA-4, etc.)
+
+**Error Handling**:
+- Clear error messages when unavailable models are selected
+- No silent fallbacks
+- Explicit guidance on how to enable models
 
 ---
 

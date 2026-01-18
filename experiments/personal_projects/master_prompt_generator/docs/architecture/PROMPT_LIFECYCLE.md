@@ -174,7 +174,7 @@ Increment when:
     
     # Authorship
     "author": "human|ai",
-    "generated_by": "claude-sonnet-4.5|gpt-4o|llama-3.2-8b",
+    "generated_by": "claude-sonnet|gpt-4o|llama3.2:latest",
     "refined_by": "string or null",
     
     # Relationships

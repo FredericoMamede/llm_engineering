@@ -42,12 +42,12 @@ class TokenEconomics:
     
     # Model pricing (per 1K tokens, as of 2025)
     PRICING = {
-        "claude-sonnet-4-5-20250929": ModelPricing(
+        "claude-sonnet": ModelPricing(
             input_cost_per_1k=3.0,
             output_cost_per_1k=15.0,
             model_name="Claude Sonnet 4.5"
         ),
-        "claude-3-5-haiku-20241022": ModelPricing(
+        "claude-haiku": ModelPricing(
             input_cost_per_1k=0.25,
             output_cost_per_1k=1.25,
             model_name="Claude 3.5 Haiku"
@@ -62,25 +62,15 @@ class TokenEconomics:
             output_cost_per_1k=10.0,
             model_name="GPT-4o"
         ),
-        "gpt-4-turbo": ModelPricing(
-            input_cost_per_1k=10.0,
-            output_cost_per_1k=30.0,
-            model_name="GPT-4 Turbo"
-        ),
         "gemini-2.5-pro": ModelPricing(
             input_cost_per_1k=1.25,
             output_cost_per_1k=5.0,
             model_name="Gemini 2.5 Pro"
         ),
-        "gemini-2.5-flash-lite": ModelPricing(
-            input_cost_per_1k=0.075,
-            output_cost_per_1k=0.3,
-            model_name="Gemini 2.5 Flash Lite"
-        ),
-        "llama-3.2-8b": ModelPricing(
+        "llama3.2:latest": ModelPricing(
             input_cost_per_1k=0.0,  # Free/local
             output_cost_per_1k=0.0,
-            model_name="Llama 3.2 8B"
+            model_name="Llama 3.2"
         ),
         "qwen2.5-coder": ModelPricing(
             input_cost_per_1k=0.0,  # Free/local
@@ -101,7 +91,7 @@ class TokenEconomics:
         self.claude_tokenizer = self.gpt_tokenizer
         self.generic_tokenizer = self.gpt_tokenizer
     
-    def estimate_tokens(self, text: str, model: str = "gpt-4") -> int:
+    def estimate_tokens(self, text: str, model: str = "gpt-4o") -> int:
         """
         Estimate token count for text.
         
@@ -127,7 +117,7 @@ class TokenEconomics:
         prompt: str, 
         use_case: str,
         complexity_tier: int,
-        model: str = "gpt-4"
+        model: str = "gpt-4o"
     ) -> int:
         """
         Estimate output token count based on prompt and use case.

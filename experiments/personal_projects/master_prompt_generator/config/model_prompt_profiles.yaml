@@ -6,11 +6,14 @@
 
 claude:
   name: "Claude (Anthropic)"
+  provider: "anthropic"
+  requires_api_key: true
+  required_env_var: "ANTHROPIC_API_KEY"
+  availability_note: "Requires ANTHROPIC_API_KEY. Anthropic uses stable family names."
   models:
-    - "claude-sonnet-4-5-20250929"
-    - "claude-3-5-sonnet-20241022"
-    - "claude-3-5-haiku-20241022"
-    - "claude-3-opus-20240229"
+    - "claude-opus"
+    - "claude-sonnet"
+    - "claude-haiku"
   
   prefers:
     - explicit_reasoning_framing: true
@@ -47,12 +50,14 @@ claude:
 
 gpt:
   name: "GPT (OpenAI)"
+  provider: "openai"
+  requires_api_key: true
+  required_env_var: "OPENAI_API_KEY"
+  availability_note: "Requires OPENAI_API_KEY. GPT-5 is officially released (2026)."
   models:
     - "gpt-5"
     - "gpt-4o"
-    - "gpt-4-turbo"
-    - "gpt-4"
-    - "gpt-3.5-turbo"
+    - "gpt-4o-mini"
   
   prefers:
     - strict_schemas: true
@@ -88,9 +93,12 @@ gpt:
 
 gemini:
   name: "Gemini (Google)"
+  provider: "google"
+  requires_api_key: true
+  required_env_var: "GOOGLE_API_KEY"
+  availability_note: "Requires GOOGLE_API_KEY. Gemini 3 is experimental/preview - not included."
   models:
     - "gemini-2.5-pro"
-    - "gemini-2.5-flash-lite"
     - "gemini-1.5-pro"
     - "gemini-1.5-flash"
   
@@ -125,11 +133,15 @@ gemini:
 
 llama:
   name: "Llama (Meta)"
+  provider: "ollama"
+  requires_api_key: false
+  required_env_var: null
+  local_runtime_required: true
+  availability_note: "Requires Ollama running locally. LLaMA 3.1/3.2 only (LLaMA-4 requires gated Hugging Face access)."
   models:
-    - "llama-3.2-8b"
-    - "llama-3.2-3b"
-    - "llama-3.1-8b"
-    - "llama-3.1-70b"
+    - "llama3.2:latest"
+    - "llama3.1:8b"
+    - "llama3.1:70b"
   
   prefers:
     - short_directive_instructions: true
@@ -166,10 +178,17 @@ llama:
 
 qwen:
   name: "Qwen (Alibaba)"
+  provider: "ollama"
+  requires_api_key: false
+  required_env_var: null
+  local_runtime_required: true
   models:
     - "qwen2.5-coder"
-    - "qwen2.5-72b"
-    - "qwen2-72b"
+    - "qwen2.5:72b"
+    - "qwen2.5:32b"
+    - "qwen2.5:14b"
+    - "qwen2.5:7b"
+    - "qwen2:72b"
   
   prefers:
     - technical_precision: true
@@ -199,9 +218,14 @@ qwen:
 
 deepseek:
   name: "DeepSeek"
+  provider: "ollama"
+  requires_api_key: false
+  required_env_var: null
+  local_runtime_required: true
+  availability_note: "Requires Ollama running locally."
   models:
+    - "deepseek-r1"
     - "deepseek-coder-v2"
-    - "deepseek-chat"
   
   prefers:
     - reasoning_explicit: true
@@ -221,9 +245,116 @@ deepseek:
     - decompose_problems: true
     - emphasize_code_quality: true
 
+mixtral:
+  name: "Mixtral (Mistral AI)"
+  provider: "ollama"
+  requires_api_key: false
+  required_env_var: null
+  local_runtime_required: true
+  availability_note: "Requires Ollama running locally. 8x22b not widely packaged."
+  models:
+    - "mixtral:8x7b"
+  
+  prefers:
+    - balanced_instruction: true
+      description: "Mixtral works well with balanced instructions"
+      preferred_context_length: "medium"
+    
+    - reasoning_framing: true
+      description: "Benefits from explicit reasoning structure"
+      example: "Let's reason through this step by step"
+  
+  adaptations:
+    - balance_instruction_tone: true
+    - add_reasoning_structure: true
+
+mistral:
+  name: "Mistral (Mistral AI)"
+  provider: "ollama"
+  requires_api_key: false
+  required_env_var: null
+  local_runtime_required: true
+  availability_note: "Requires Ollama running locally. Note: 8x7b is Mixtral, not Mistral."
+  models:
+    - "mistral:7b"
+  
+  prefers:
+    - concise_instructions: true
+      description: "Mistral prefers concise, clear instructions"
+      preferred_context_length: "short-to-medium"
+    
+    - direct_commands: true
+      description: "Direct commands work well"
+      example: "Generate X with Y format"
+  
+  adaptations:
+    - optimize_for_conciseness: true
+    - clarify_directives: true
+
+gemma:
+  name: "Gemma (Google)"
+  provider: "ollama"
+  requires_api_key: false
+  required_env_var: null
+  local_runtime_required: true
+  models:
+    - "gemma3:270m"
+    - "gemma2:9b"
+    - "gemma2:27b"
+  
+  prefers:
+    - instruction_tuned_format: true
+      description: "Gemma is instruction-tuned, responds well to clear instructions"
+      preferred_context_length: "medium"
+    
+    - structured_tasks: true
+      description: "Works well with structured task definitions"
+      example: "Task: [description]. Format: [format]"
+  
+  adaptations:
+    - optimize_for_instruction_format: true
+    - structure_task_definition: true
+
+llama_gated:
+  name: "LLaMA-4 (Meta, Gated)"
+  provider: "huggingface"
+  requires_api_key: true
+  required_env_var: "HUGGINGFACE_TOKEN"
+  availability_note: >
+    Requires Hugging Face gated access approval and HUGGINGFACE_TOKEN.
+    Not available via Ollama. Advanced users only.
+  models:
+    - "meta-llama/Llama-4-Scout-17B-16E-Instruct"
+    - "meta-llama/Llama-4-Maverick-17B-128E-Instruct"
+  
+  prefers:
+    - structured_reasoning: true
+      description: "LLaMA-4 benefits from explicit structure and reasoning hints"
+      example: "Let's reason step by step: 1) Analyze... 2) Evaluate... 3) Conclude..."
+    
+    - moderate_verbosity: true
+      description: "Avoid overly compressed prompts"
+      preferred_context_length: "medium"
+    
+    - explicit_output_format: true
+      description: "Clear output format specifications work well"
+      example: "Output format: JSON with structure {...}"
+  
+  avoids:
+    - excessive_compression: "Maintain moderate verbosity"
+    - vague_structure: "Provide explicit structure"
+  
+  adaptations:
+    - add_reasoning_scaffold: true
+    - enforce_structure: true
+    - moderate_verbosity: true
+
 # Generic fallback profile
 generic:
   name: "Generic (Unknown Model)"
+  provider: "unknown"
+  requires_api_key: false
+  required_env_var: null
   prefers:
     - clear_instructions: true
     - explicit_format: true

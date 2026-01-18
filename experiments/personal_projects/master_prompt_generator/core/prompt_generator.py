@@ -231,7 +231,7 @@ Provide the prompt in this structure:
         complexity_tier: int,
         context: str,
         requirements: Optional[List[str]] = None,
-        target_model: str = "claude-sonnet-4-5-20250929",
+        target_model: str = "claude-sonnet",
         generation_model: Optional[str] = None
     ) -> PromptWithMetadata:
         """

@@ -36,7 +36,7 @@ def test_core_loop():
             "Include action items",
             "Request confirmation"
         ],
-        target_model="claude-sonnet-4-5-20250929",
+        target_model="claude-sonnet",
         auto_approve=True
     )
     

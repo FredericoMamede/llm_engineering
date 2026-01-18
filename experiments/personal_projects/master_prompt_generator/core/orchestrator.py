@@ -52,7 +52,7 @@ class PromptOrchestrator:
         complexity_tier: int,
         context: str,
         requirements: Optional[List[str]] = None,
-        target_model: str = "claude-sonnet-4-5-20250929",
+        target_model: str = "claude-sonnet",
         generation_model: Optional[str] = None,
         auto_approve: bool = True
     ) -> tuple[PromptWithMetadata, List[PromptWithMetadata], List[EvaluationResult]]:
