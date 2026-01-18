@@ -1,0 +1,40 @@
+# Week 4 Git Ignore
+
+# Environment variables
+.env
+.env.local
+
+# Generated code outputs
+outputs/
+*.cpp
+*.rs
+*.exe
+main
+main.exe
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Temporary files
+*.tmp
+*.log
