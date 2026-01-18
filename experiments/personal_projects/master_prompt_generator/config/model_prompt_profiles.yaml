@@ -19,7 +19,7 @@ claude:
     
     - polite_constraints: true
       description: "Polite, conversational constraints work better than harsh directives"
-      example: "Please ensure..." instead of "You must..."
+      example: "Please ensure... (instead of You must...)"
     
     - longer_context: true
       description: "Claude handles longer context well, can include more examples"
@@ -28,7 +28,7 @@ claude:
     
     - softer_directives: true
       description: "Gentle guidance preferred over strict commands"
-      example: "Consider including..." vs "You must include..."
+      example: "Consider including... (vs You must include...)"
     
     - structured_thinking: true
       description: "Explicit structure for complex reasoning"
@@ -69,7 +69,7 @@ gpt:
     
     - deterministic_instructions: true
       description: "Clear, unambiguous instructions work best"
-      example: "Generate exactly 3 examples" vs "Generate some examples"
+      example: "Generate exactly 3 examples (vs Generate some examples)"
     
     - numbered_steps: true
       description: "Numbered lists for multi-step tasks"
@@ -150,7 +150,7 @@ llama:
     
     - simple_role_definitions: true
       description: "Simple role definitions work better than complex personas"
-      example: "You are a helpful assistant." vs long persona descriptions
+      example: "You are a helpful assistant. (vs long persona descriptions)"
   
   avoids:
     - excessive_verbosity: "Keep prompts concise"

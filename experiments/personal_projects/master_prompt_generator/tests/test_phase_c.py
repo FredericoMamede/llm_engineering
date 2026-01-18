@@ -29,6 +29,8 @@ class TestLifecycleGuard:
         """Cannot approve prompt that hasn't been evaluated."""
         guard = LifecycleGuard()
         prompt = PromptWithMetadata(
+            system_prompt=None,
+            user_prompt="Test prompt",
             full_prompt="Test prompt",
             lifecycle_state="generated",
             evaluation_score_after=None
@@ -42,6 +44,8 @@ class TestLifecycleGuard:
         """Cannot refine archived prompt."""
         guard = LifecycleGuard()
         prompt = PromptWithMetadata(
+            system_prompt=None,
+            user_prompt="Test prompt",
             full_prompt="Test prompt",
             lifecycle_state="archived"
         )
@@ -117,6 +121,8 @@ class TestVersionGuard:
         """Approved prompts are immutable."""
         guard = VersionGuard()
         prompt = PromptWithMetadata(
+            system_prompt=None,
+            user_prompt="Test",
             full_prompt="Test",
             version="1.0.0",
             lifecycle_state="approved"
@@ -135,11 +141,15 @@ class TestBreakingChangeDetector:
         detector = BreakingChangeDetector()
         
         old = PromptWithMetadata(
+            system_prompt=None,
+            user_prompt="Generate text. Example 1: ... Example 2: ...",
             full_prompt="Generate text. Example 1: ... Example 2: ...",
             target_model="claude"
         )
         
         new = PromptWithMetadata(
+            system_prompt=None,
+            user_prompt="Generate text.",
             full_prompt="Generate text.",
             target_model="claude"
         )
@@ -153,11 +163,15 @@ class TestBreakingChangeDetector:
         detector = BreakingChangeDetector()
         
         old = PromptWithMetadata(
+            system_prompt=None,
+            user_prompt="Generate output in JSON format.",
             full_prompt="Generate output in JSON format.",
             target_model="claude"
         )
         
         new = PromptWithMetadata(
+            system_prompt=None,
+            user_prompt="Generate output in Markdown format.",
             full_prompt="Generate output in Markdown format.",
             target_model="claude"
         )
@@ -175,11 +189,15 @@ class TestRegressionEnforcement:
         approval = ApprovalLogic(quality_threshold=7.0)
         
         current = PromptWithMetadata(
+            system_prompt=None,
+            user_prompt="Test",
             full_prompt="Test",
             evaluation_score_after=6.5
         )
         
         previous = PromptWithMetadata(
+            system_prompt=None,
+            user_prompt="Test",
             full_prompt="Test",
             evaluation_score_after=8.0,
             version="1.0.0"
@@ -213,6 +231,8 @@ class TestApprovalImmutability:
         """Cannot modify approved prompt."""
         guard = VersionGuard()
         prompt = PromptWithMetadata(
+            system_prompt=None,
+            user_prompt="Test",
             full_prompt="Test",
             version="1.0.0",
             lifecycle_state="approved"

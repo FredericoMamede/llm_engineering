@@ -8,7 +8,7 @@ Detects breaking changes in prompts:
 - Model compatibility changes
 """
 
-from typing import Tuple, List, Dict
+from typing import Tuple, List
 from .prompt_generator import PromptWithMetadata
 
 

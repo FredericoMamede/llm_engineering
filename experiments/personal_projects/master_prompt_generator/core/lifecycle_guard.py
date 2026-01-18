@@ -4,7 +4,7 @@ Lifecycle Guard - Enforces lifecycle invariants.
 Prevents illegal state transitions and ensures lifecycle integrity.
 """
 
-from typing import List, Tuple
+from typing import Tuple
 from .prompt_generator import PromptWithMetadata
 
 
