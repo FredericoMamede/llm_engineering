@@ -8,6 +8,7 @@ normalizes them to clean Markdown, and stores them with metadata.
 import re
 import yaml
 import time
+import sys
 from pathlib import Path
 from typing import Dict, List, Optional
 from urllib.parse import urlparse
@@ -15,6 +16,21 @@ import requests
 from bs4 import BeautifulSoup
 from markdownify import markdownify as md
 from tenacity import retry, stop_after_attempt, wait_exponential
+
+# Handle imports for both script execution and module import
+try:
+    from .browser_fetcher import BrowserFetcher
+except (ImportError, ValueError):
+    # When running as script, import directly from file to avoid __init__.py issues
+    browser_fetcher_path = Path(__file__).parent / "browser_fetcher.py"
+    if browser_fetcher_path.exists():
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("browser_fetcher", browser_fetcher_path)
+        browser_fetcher_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(browser_fetcher_module)
+        BrowserFetcher = browser_fetcher_module.BrowserFetcher
+    else:
+        raise ImportError(f"Could not find browser_fetcher.py at {browser_fetcher_path}")
 
 
 class SourceMetadata:
@@ -255,48 +271,132 @@ class SourcePlanParser:
 
 
 class DocumentFetcher:
-    """Fetch and normalize documents from URLs."""
+    """Fetch and normalize documents from URLs with HTTP and browser fallback."""
     
     def __init__(self, output_dir: Path):
         self.output_dir = output_dir
         self.output_dir.mkdir(parents=True, exist_ok=True)
+        self._browser_fetcher: Optional[BrowserFetcher] = None
     
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
-    def fetch(self, metadata: SourceMetadata) -> Optional[str]:
-        """Fetch document from URL and return normalized Markdown."""
+    def _get_browser_fetcher(self) -> BrowserFetcher:
+        """Get or create browser fetcher instance (lazy initialization)."""
+        if self._browser_fetcher is None:
+            self._browser_fetcher = BrowserFetcher(headless=True)
+        return self._browser_fetcher
+    
+    def _is_bot_protection_error(self, response: requests.Response) -> bool:
+        """Check if response indicates bot protection."""
+        if response.status_code in (401, 403):
+            return True
+        
+        # Check for common bot protection indicators in response
+        content = response.text.lower()
+        bot_indicators = [
+            'cloudflare',
+            'access denied',
+            'bot protection',
+            'please enable javascript',
+            'checking your browser',
+        ]
+        
+        return any(indicator in content for indicator in bot_indicators)
+    
+    def _fetch_http(self, metadata: SourceMetadata) -> Optional[str]:
+        """Fetch document using HTTP requests."""
         try:
-            print(f"📥 Fetching: {metadata.source_name}")
-            print(f"   URL: {metadata.source_url}")
-            
             headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
             }
             
             response = requests.get(metadata.source_url, headers=headers, timeout=30)
             response.raise_for_status()
             
-            # Parse HTML
-            soup = BeautifulSoup(response.content, 'html.parser')
+            # Check for bot protection
+            if self._is_bot_protection_error(response):
+                return None  # Signal to try browser fallback
             
-            # Remove script and style elements
-            for script in soup(["script", "style", "nav", "header", "footer", "aside"]):
-                script.decompose()
+            return response.text
             
-            # Convert to Markdown
-            markdown = md(str(soup), heading_style="ATX", bullets="-")
+        except requests.exceptions.HTTPError as e:
+            # Check if it's a bot protection error
+            if hasattr(e.response, 'status_code') and e.response.status_code in (401, 403):
+                return None  # Signal to try browser fallback
+            # For other HTTP errors, retry will be handled by the caller
+            raise
+        except requests.exceptions.RequestException:
+            # For network errors, retry will be handled by the caller
+            raise
+    
+    def _fetch_browser(self, metadata: SourceMetadata) -> Optional[str]:
+        """Fetch document using browser (fallback for bot-protected pages)."""
+        try:
+            print(f"   🌐 Using browser fallback for bot-protected page...")
+            browser_fetcher = self._get_browser_fetcher()
+            html_content = browser_fetcher.fetch(metadata.source_url)
+            return html_content
+        except Exception as e:
+            print(f"   ❌ Browser fetch failed: {e}")
+            return None
+    
+    def _normalize_html(self, html_content: str) -> str:
+        """Normalize HTML content to clean Markdown."""
+        # Parse HTML
+        soup = BeautifulSoup(html_content, 'html.parser')
+        
+        # Remove script and style elements
+        for script in soup(["script", "style", "nav", "header", "footer", "aside"]):
+            script.decompose()
+        
+        # Convert to Markdown
+        markdown = md(str(soup), heading_style="ATX", bullets="-")
+        
+        # Clean up excessive whitespace
+        markdown = re.sub(r'\n{3,}', '\n\n', markdown)
+        markdown = markdown.strip()
+        
+        return markdown
+    
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
+    def fetch(self, metadata: SourceMetadata) -> Optional[str]:
+        """
+        Fetch document from URL and return normalized Markdown.
+        
+        Tries HTTP first, falls back to browser if bot protection is detected.
+        """
+        try:
+            print(f"📥 Fetching: {metadata.source_name}")
+            print(f"   URL: {metadata.source_url}")
             
-            # Clean up excessive whitespace
-            markdown = re.sub(r'\n{3,}', '\n\n', markdown)
-            markdown = markdown.strip()
+            # Try HTTP fetch first
+            html_content = self._fetch_http(metadata)
             
+            # If HTTP fetch failed due to bot protection, try browser
+            if html_content is None:
+                html_content = self._fetch_browser(metadata)
+            
+            if html_content is None:
+                return None
+            
+            # Normalize HTML to Markdown
+            markdown = self._normalize_html(html_content)
             return markdown
             
         except requests.exceptions.RequestException as e:
-            print(f"❌ Error fetching {metadata.source_url}: {e}")
+            # Try browser fallback for any HTTP error (after retries exhausted)
+            print(f"   ⚠️  HTTP fetch failed after retries: {e}")
+            html_content = self._fetch_browser(metadata)
+            if html_content:
+                return self._normalize_html(html_content)
             return None
         except Exception as e:
             print(f"❌ Error processing {metadata.source_url}: {e}")
             return None
+    
+    def cleanup(self):
+        """Cleanup browser resources."""
+        if self._browser_fetcher:
+            self._browser_fetcher.close()
+            self._browser_fetcher = None
     
     def save(self, metadata: SourceMetadata, content: str):
         """Save normalized document with YAML frontmatter."""
@@ -379,6 +479,9 @@ def main():
     print(f"   Failed: {failed}")
     print(f"   Skipped: {skipped}")
     print(f"   Total: {len(sources)}")
+    
+    # Cleanup browser resources
+    fetcher.cleanup()
 
 
 if __name__ == "__main__":

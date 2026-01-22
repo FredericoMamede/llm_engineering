@@ -77,9 +77,11 @@ Some sources returned 403 Forbidden errors due to bot protection mechanisms:
 - **Cloudflare-hosted pages** - Various documentation sites using Cloudflare protection
 
 **Resolution:**
-- These sources were manually verified for accessibility and content accuracy
-- Where automated fetching failed, equivalent authoritative sources were identified and used
-- All sources in SOURCE_PLAN.md remain valid and verified, regardless of automated fetch status
+- Browser-based fallback using Playwright has been implemented to handle bot-protected pages
+- The system attempts HTTP fetch first, then automatically falls back to a real browser (Playwright) when bot protection is detected
+- Playwright launches a Chromium browser that behaves like a real user, executing JavaScript and waiting for content to render
+- Browser fallback is used only for public pages that require bot protection bypass; it does not attempt to bypass paywalls or authentication
+- Previously failing sources (Eventyr website, OpenAI docs) should now be fetchable via the browser fallback
 
 ### Notes
 
