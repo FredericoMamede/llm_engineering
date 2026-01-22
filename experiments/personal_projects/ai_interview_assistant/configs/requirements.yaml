@@ -1,0 +1,234 @@
+# Canonical Requirement Scope for AI-First MERN Fullstack Developer (Eventyr)
+# This file is the authoritative source for all 22 requirements
+
+requirements:
+  core:
+    - id: 1
+      text: "4+ years of commercial experience in fullstack TypeScript development"
+      category: "experience"
+      priority: "required"
+      knowledge_domains:
+        - "TypeScript fundamentals and advanced patterns"
+        - "Fullstack architecture patterns"
+        - "Commercial development practices"
+    
+    - id: 2
+      text: "Strong experience with React 18 and modern React patterns (hooks, context, TanStack Query)"
+      category: "frontend"
+      priority: "required"
+      knowledge_domains:
+        - "React 18 features and patterns"
+        - "React Hooks (useState, useEffect, useContext, custom hooks)"
+        - "Context API and state management"
+        - "TanStack Query (React Query) for data fetching"
+        - "Modern React best practices"
+    
+    - id: 3
+      text: "Production experience with Node.js and NestJS (or similar opinionated frameworks)"
+      category: "backend"
+      priority: "required"
+      knowledge_domains:
+        - "Node.js runtime and event loop"
+        - "NestJS framework architecture"
+        - "Dependency injection patterns"
+        - "Module organization and structure"
+        - "Alternative opinionated frameworks (Express with structure, Fastify)"
+    
+    - id: 4
+      text: "Solid knowledge of PostgreSQL — schema design, migrations, query optimization, JSONB"
+      category: "database"
+      priority: "required"
+      knowledge_domains:
+        - "PostgreSQL schema design principles"
+        - "Database migrations and versioning"
+        - "Query optimization and indexing"
+        - "JSONB data type and operations"
+        - "PostgreSQL-specific features"
+    
+    - id: 5
+      text: "Experience with Redis for caching, pub/sub, or job queues"
+      category: "infrastructure"
+      priority: "required"
+      knowledge_domains:
+        - "Redis caching strategies"
+        - "Redis pub/sub patterns"
+        - "Redis for job queues"
+        - "Redis data structures and commands"
+    
+    - id: 6
+      text: "Understanding of REST API design and authentication (JWT, OAuth flows)"
+      category: "api"
+      priority: "required"
+      knowledge_domains:
+        - "REST API design principles"
+        - "JWT token authentication"
+        - "OAuth 2.0 flows"
+        - "API security best practices"
+    
+    - id: 7
+      text: "Experience integrating third-party APIs (payment gateways, external services)"
+      category: "integration"
+      priority: "required"
+      knowledge_domains:
+        - "Third-party API integration patterns"
+        - "Payment gateway integration (Stripe, PayPal, etc.)"
+        - "Error handling and retry logic"
+        - "API rate limiting and throttling"
+    
+    - id: 8
+      text: "Familiarity with AI/LLM APIs (OpenAI, Claude, or similar) — prompt engineering basics"
+      category: "ai"
+      priority: "required"
+      knowledge_domains:
+        - "OpenAI API usage"
+        - "Anthropic Claude API"
+        - "Prompt engineering fundamentals"
+        - "LLM integration patterns"
+    
+    - id: 9
+      text: "Product thinking: understanding why you're building, not just how"
+      category: "soft_skills"
+      priority: "required"
+      knowledge_domains:
+        - "Product development mindset"
+        - "User-centric thinking"
+        - "Business value alignment"
+        - "Technical decision making with product context"
+    
+    - id: 10
+      text: "Ability to work autonomously in a fast-paced startup environment"
+      category: "soft_skills"
+      priority: "required"
+      knowledge_domains:
+        - "Autonomous work patterns"
+        - "Startup environment dynamics"
+        - "Fast-paced development practices"
+        - "Self-direction and ownership"
+    
+    - id: 11
+      text: "English: Upper-Intermediate+ (written communication with international team)"
+      category: "communication"
+      priority: "required"
+      knowledge_domains:
+        - "Technical communication in English"
+        - "International team collaboration"
+        - "Written communication best practices"
+
+  plus:
+    - id: 12
+      text: "Experience with BullMQ or similar job queue systems (Agenda, Bull, AWS SQS)"
+      category: "infrastructure"
+      priority: "nice_to_have"
+      knowledge_domains:
+        - "BullMQ job queue system"
+        - "Alternative job queues (Agenda, Bull, AWS SQS)"
+        - "Job queue patterns and best practices"
+        - "Background job processing"
+    
+    - id: 13
+      text: "Knowledge of TypeORM or Prisma ORM"
+      category: "database"
+      priority: "nice_to_have"
+      knowledge_domains:
+        - "TypeORM patterns and features"
+        - "Prisma ORM usage"
+        - "ORM vs raw SQL tradeoffs"
+        - "Database abstraction layers"
+    
+    - id: 14
+      text: "Experience building SaaS products with multi-tenant architecture"
+      category: "architecture"
+      priority: "nice_to_have"
+      knowledge_domains:
+        - "Multi-tenant architecture patterns"
+        - "SaaS product development"
+        - "Tenant isolation strategies"
+        - "Data segregation approaches"
+    
+    - id: 15
+      text: "Familiarity with Stripe API for subscription billing"
+      category: "integration"
+      priority: "nice_to_have"
+      knowledge_domains:
+        - "Stripe API integration"
+        - "Subscription billing patterns"
+        - "Payment processing workflows"
+        - "Stripe webhooks and events"
+    
+    - id: 16
+      text: "Understanding of rate limiting, throttling, and anti-bot detection patterns"
+      category: "security"
+      priority: "nice_to_have"
+      knowledge_domains:
+        - "Rate limiting strategies"
+        - "Throttling patterns"
+        - "Anti-bot detection techniques"
+        - "API abuse prevention"
+    
+    - id: 17
+      text: "Experience with Tailwind CSS and component libraries (shadcn/ui, Radix)"
+      category: "frontend"
+      priority: "nice_to_have"
+      knowledge_domains:
+        - "Tailwind CSS utility-first approach"
+        - "shadcn/ui component library"
+        - "Radix UI primitives"
+        - "Modern CSS frameworks"
+    
+    - id: 18
+      text: "Knowledge of WebSockets for real-time features"
+      category: "frontend"
+      priority: "nice_to_have"
+      knowledge_domains:
+        - "WebSocket protocol"
+        - "Real-time communication patterns"
+        - "Socket.io or native WebSocket usage"
+        - "Real-time feature implementation"
+    
+    - id: 19
+      text: "Experience with Testcontainers or similar for integration testing"
+      category: "testing"
+      priority: "nice_to_have"
+      knowledge_domains:
+        - "Testcontainers for integration tests"
+        - "Docker-based testing"
+        - "Integration testing patterns"
+        - "Test isolation strategies"
+    
+    - id: 20
+      text: "CI/CD setup experience"
+      category: "devops"
+      priority: "nice_to_have"
+      knowledge_domains:
+        - "CI/CD pipeline design"
+        - "GitHub Actions, GitLab CI, or similar"
+        - "Automated testing in CI/CD"
+        - "Deployment automation"
+    
+    - id: 21
+      text: "Deployment experience on Railway, Render, or similar PaaS platforms"
+      category: "devops"
+      priority: "nice_to_have"
+      knowledge_domains:
+        - "Railway deployment"
+        - "Render platform"
+        - "PaaS deployment patterns"
+        - "Platform-specific considerations"
+    
+    - id: 22
+      text: "Startup experience or work in agile, fast-moving teams"
+      category: "soft_skills"
+      priority: "nice_to_have"
+      knowledge_domains:
+        - "Startup culture and dynamics"
+        - "Agile methodologies"
+        - "Fast-moving team collaboration"
+        - "Adaptability and iteration"
+
+coverage_requirements:
+  per_requirement:
+    - "At least one primary authoritative source"
+    - "At least one secondary explanatory source"
+    - "A minimum of 5 semantically distinct chunks"
+    - "At least one interview-question-oriented chunk"
+    - "At least one real-world tradeoff or failure-mode chunk"

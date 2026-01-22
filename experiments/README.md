@@ -46,6 +46,46 @@ A comprehensive prompt engineering platform that generates, evaluates, and refin
 
 ---
 
+### AI Interview Preparation Assistant
+**Location:** `experiments/personal_projects/ai_interview_assistant/`
+
+**Status:** 🚧 **In Development**
+
+**Description:**
+A production-grade RAG system that functions as an Expert Knowledge Worker for technical interview preparation. Initially specialized for the "AI-First MERN Fullstack Developer" role at Eventyr, but architected to support future roles, companies, and tech stacks without restructuring.
+
+**Key Features:**
+- ✅ **No Hallucinations** - All answers grounded in retrieved documents
+- ✅ **22 Requirement Coverage** - Complete knowledge domain mapping for all job requirements
+- ✅ **Company Context Integration** - Eventyr-specific framing and constraints
+- ✅ **Advanced RAG Pipeline** - Query rewriting, dual retrieval, LLM-based re-ranking
+- ✅ **6 Assistant Modes** - Explain, Interviewer, Evaluation, Company-Aware, System Design, Rapid Fire
+- ✅ **LLM-as-a-Judge Evaluation** - Structured scoring (accuracy, depth, relevance, confidence)
+- ✅ **Source Freshness Validation** - Prefer sources < 24 months, mark historical context
+- ✅ **Strict Context Injection** - Refuse to answer if insufficient context retrieved
+- ✅ **Interview Calibration** - Senior engineer/hiring manager level, emphasis on tradeoffs
+
+**Technologies:**
+- Python, Pydantic, ChromaDB
+- LangChain, Sentence Transformers (all-MiniLM-L6-v2)
+- OpenAI API, Anthropic API
+- Gradio UI
+- YAML configuration
+
+**Architecture:**
+- Data ingestion: Source discovery → Normalization → Semantic chunking → Embedding → Vector store
+- RAG pipeline: Query rewriting → Dual retrieval → Re-ranking → Context validation → Answer generation
+- Mode system: Prompt-orchestrated modes with consistent interface
+- Evaluation: LLM-as-a-judge with structured scoring and feedback
+
+**Notable:**
+- Production-grade RAG patterns from Week 5
+- Extensible design (new roles/companies without code rewrites)
+- Coverage guarantee: 5+ chunks per requirement with specific types
+- Interview-focused calibration (senior engineer level, tradeoff emphasis)
+
+---
+
 ## 📚 Week 1 Mini-Projects
 
 ### LLM Playground
@@ -283,8 +323,9 @@ Extends code conversion to Rust, adds advanced benchmarking, and creates an enha
 
 ## 📊 Summary by Category
 
-### Personal Projects (1)
+### Personal Projects (2)
 1. **Master Prompt Generator** - Production-ready prompt engineering platform
+2. **AI Interview Preparation Assistant** - Production-grade RAG system for technical interview prep (in development)
 
 ### Mini-Projects (3)
 1. **Week 1: LLM Playground** - Multi-step LLM workflows and model comparison
@@ -328,9 +369,9 @@ Extends code conversion to Rust, adds advanced benchmarking, and creates an enha
 
 ## 📈 Project Statistics
 
-- **Total Projects:** 8
+- **Total Projects:** 9
 - **Production-Ready:** 2 (Master Prompt Generator, AI Knowledge Assistant)
-- **In Progress:** 1 (Meeting Intelligence Extractor)
+- **In Progress:** 2 (Meeting Intelligence Extractor, AI Interview Preparation Assistant)
 - **Complete Experiments:** 5
 
 All projects demonstrate practical LLM engineering patterns, from simple workflows to production-ready systems with security, monitoring, and scalability considerations.

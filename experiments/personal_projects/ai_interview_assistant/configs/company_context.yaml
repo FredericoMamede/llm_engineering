@@ -1,0 +1,79 @@
+# Eventyr Company Context Requirements
+# This file defines the company-specific knowledge domains that must be ingested
+
+company_context:
+  name: "Eventyr"
+  role: "AI-First MERN Fullstack Developer"
+  
+  domains:
+    - id: 1
+      name: "Eventyr mission and positioning"
+      description: "Company mission, vision, and market positioning"
+      sources:
+        - "Official website"
+        - "Public statements and announcements"
+        - "Company blog or press releases"
+    
+    - id: 2
+      name: "Autonomous recruiting platform description"
+      description: "Detailed description of the autonomous recruiting platform product"
+      sources:
+        - "Product documentation"
+        - "Public product descriptions"
+        - "Platform feature documentation"
+    
+    - id: 3
+      name: "AI-powered agent workflows"
+      description: "AI agent workflows for sourcing, engagement, and screening"
+      sources:
+        - "Technical documentation"
+        - "Architecture descriptions"
+        - "Workflow documentation"
+      subdomains:
+        - "Sourcing workflows"
+        - "Engagement workflows"
+        - "Screening workflows"
+    
+    - id: 4
+      name: "Performance constraints"
+      description: "System performance requirements and constraints"
+      constraints:
+        - "Sub-5-minute candidate response time"
+        - "Hundreds of parallel conversations"
+      sources:
+        - "Technical specifications"
+        - "Performance requirements documentation"
+        - "System design documents"
+    
+    - id: 5
+      name: "Human-in-the-loop review and brand safety"
+      description: "Human oversight mechanisms and brand safety measures"
+      sources:
+        - "Process documentation"
+        - "Quality assurance procedures"
+        - "Brand safety guidelines"
+    
+    - id: 6
+      name: "Small, high-impact team dynamics"
+      description: "Team structure and working dynamics (2-3 engineers)"
+      sources:
+        - "Team structure information"
+        - "Working culture descriptions"
+        - "Team size and composition"
+    
+    - id: 7
+      name: "AI-assisted development culture"
+      description: "Development practices using AI tools (Claude Code, Cursor)"
+      sources:
+        - "Development workflow documentation"
+        - "AI tool usage patterns"
+        - "Development culture descriptions"
+      tools:
+        - "Claude Code"
+        - "Cursor IDE"
+
+  ingestion_requirements:
+    - "Each domain must have at least one primary source"
+    - "Sources must be normalized to clean Markdown"
+    - "Company context treated as first-class retrieval material"
+    - "Preserve product language and constraints"
