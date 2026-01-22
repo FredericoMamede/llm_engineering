@@ -18,11 +18,10 @@ The AI Interview Preparation Assistant is a production-grade RAG system designed
 ### 1. Data Ingestion Layer
 
 **Components:**
-- `ingest/discoverer.py`: Source discovery from web
-- `ingest/normalizer.py`: Markdown normalization
+- `ingest/discoverer.py`: Source discovery and normalization from web
+- `ingest/browser_fetcher.py`: Playwright-based fetching for bot-protected pages
 - `ingest/chunker.py`: LLM-based semantic chunking
-- `ingest/embedder.py`: Embedding generation
-- `ingest/vector_store.py`: Chroma integration
+- `ingest/embedder.py`: Embedding generation and vector DB creation
 
 **Flow:**
 ```
@@ -33,69 +32,77 @@ Source Discovery → Normalization → Semantic Chunking → Embedding → Vecto
 - LLM-based semantic chunking with structured outputs (headline, summary, original_text)
 - Metadata preservation (source, freshness, requirement_id, chunk_type)
 - Source freshness validation (prefer < 24 months)
-- Coverage verification against 22 requirements
+- Browser fallback for bot-protected pages
+- Local pickle-based vector storage (Chroma-compatible interface available)
 
 ### 2. RAG Pipeline Layer
 
 **Components:**
-- `core/query_rewriter.py`: Query rewriting logic
-- `core/retriever.py`: Dual retrieval (original + rewritten)
-- `core/reranker.py`: LLM-based re-ranking
-- `core/context_manager.py`: Context injection and validation
-- `core/rag_pipeline.py`: Main orchestration
+- `core/vector_store.py`: Vector store abstraction (local/Chroma)
+- `core/retriever.py`: Knowledge retrieval with query rewriting
+- `core/answer_generator.py`: Strict answer generation with grounding
+- `core/modes.py`: Interview mode orchestration
 
 **Flow:**
 ```
-Query → Rewrite → Dual Retrieval → Re-ranking → Context Validation → Answer Generation
+Query → Rewrite → Dual Retrieval → Merge & Deduplicate → Filter → Answer Generation
 ```
 
 **Key Features:**
-- Query rewriting for better retrieval
+- Query rewriting for better retrieval (optional)
 - Dual retrieval (original + rewritten queries)
-- LLM-based re-ranking with structured outputs
+- Metadata-aware filtering
 - Configurable top-K and final-K
-- Conversation history awareness
 - Strict context injection (no free generation)
+- Refusal behavior when context insufficient
+- Interview mode-specific configurations
 
 ### 3. Mode Layer
 
 **Components:**
-- `modes/explain_mode.py`: Detailed explanations
-- `modes/interviewer_mode.py`: Adaptive difficulty questions
-- `modes/evaluation_mode.py`: Scoring and feedback
-- `modes/company_aware_mode.py`: Eventyr-specific framing
-- `modes/system_design_mode.py`: Architecture discussions
-- `modes/rapid_fire_mode.py`: Quick Q&A format
+- `core/modes.py`: All 6 interview modes in single orchestration module
+
+**Modes:**
+- **Explain Mode**: Detailed explanations with clarity focus
+- **Interviewer Mode**: Simulates senior interviewer with follow-up questions
+- **Evaluation Mode**: Evaluates candidate answers
+- **Company-Aware Mode**: Eventyr-specific framing
+- **System Design Mode**: Emphasizes tradeoffs and failure modes
+- **Rapid Fire Mode**: Short, precise answers
 
 **Key Features:**
-- Prompt-orchestrated modes (code-driven, not LLM-driven)
-- Mode-specific prompt templates
-- Consistent interface across modes
-- Easy to add new modes
+- Configuration-driven modes (ModeConfig dataclass)
+- Mode-specific retrieval parameters (K values, filters)
+- Mode-specific prompt instructions
+- Follow-up question generation (Interviewer Mode)
+- No code duplication - shared retrieval and answer generation
 
 ### 4. Evaluation Layer
 
 **Components:**
-- `evaluation/judge.py`: LLM-as-a-judge
-- `evaluation/metrics.py`: Scoring metrics
+- `evaluation/judge.py`: LLM-as-a-judge evaluation
 
 **Key Features:**
-- Structured scoring (accuracy, depth, relevance, confidence)
-- Missing concept identification
-- Follow-up question suggestions
-- Feedback generation
+- Structured feedback (strengths, gaps, missed concepts, follow-ups)
+- Confidence scoring (1-5 scale)
+- Grounded evaluation (only uses retrieved chunks)
+- Robust parsing of LLM evaluation responses
 
 ### 5. UI Layer
 
 **Components:**
 - `ui/app.py`: Gradio interface
+- `ui/drill_mode.py`: Drill mode conversation tracking
+- `ui/weakness_tracker.py`: Weakness tracking with JSON persistence
 
 **Key Features:**
 - Mode selector
-- Retrieved context viewer
+- Retrieved context viewer with badges and highlighting
 - Answer + evaluation panel
-- Debug visibility (retrieval, re-ranking)
-- Conversation history
+- Debug visibility (similarity scores, retrieval metadata)
+- Drill mode for iterative practice
+- Weakness tracking with automatic persistence
+- Confidence badges and visual indicators
 
 ## Data Flow
 

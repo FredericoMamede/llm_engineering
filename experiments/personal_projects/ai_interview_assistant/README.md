@@ -4,7 +4,7 @@
 
 **Location:** `experiments/personal_projects/ai_interview_assistant/`
 
-**Status:** 🚧 **In Development**
+**Status:** ✅ **Functional** - Core system complete, in maintenance mode
 
 ---
 
@@ -186,118 +186,143 @@ Implement prompt-orchestrated modes:
 ai_interview_assistant/
 ├── README.md                    # This file
 ├── requirements.txt             # Python dependencies
-├── .env.example                 # Environment variables template
 │
 ├── core/                        # Core RAG pipeline
 │   ├── __init__.py
-│   ├── rag_pipeline.py         # Main RAG orchestration
-│   ├── query_rewriter.py        # Query rewriting logic
-│   ├── retriever.py            # Dual retrieval
-│   ├── reranker.py             # LLM-based re-ranking
-│   └── context_manager.py      # Context injection and validation
+│   ├── vector_store.py         # Vector store abstraction (local/Chroma)
+│   ├── retriever.py            # Knowledge retrieval with query rewriting
+│   ├── answer_generator.py     # Strict answer generation
+│   └── modes.py                # Interview mode orchestration
 │
 ├── ingest/                      # Data ingestion pipeline
 │   ├── __init__.py
-│   ├── discoverer.py           # Source discovery
-│   ├── normalizer.py           # Markdown normalization
+│   ├── discoverer.py           # Source discovery and normalization
+│   ├── browser_fetcher.py      # Playwright-based fetching for bot-protected pages
 │   ├── chunker.py              # LLM-based semantic chunking
-│   ├── embedder.py             # Embedding generation
-│   └── vector_store.py         # Chroma integration
-│
-├── modes/                      # Assistant modes
-│   ├── __init__.py
-│   ├── explain_mode.py
-│   ├── interviewer_mode.py
-│   ├── evaluation_mode.py
-│   ├── company_aware_mode.py
-│   ├── system_design_mode.py
-│   └── rapid_fire_mode.py
+│   └── embedder.py             # Embedding generation and vector DB creation
 │
 ├── evaluation/                 # Evaluation system
 │   ├── __init__.py
-│   ├── judge.py                # LLM-as-a-judge
-│   └── metrics.py              # Scoring metrics
+│   └── judge.py                # LLM-as-a-judge evaluation
 │
 ├── ui/                         # Gradio interface
 │   ├── __init__.py
-│   └── app.py                  # Main UI
+│   ├── app.py                  # Main UI
+│   ├── drill_mode.py           # Drill mode conversation tracking
+│   └── weakness_tracker.py    # Weakness tracking with JSON persistence
 │
 ├── configs/                    # Configuration files
-│   ├── requirements.yaml       # Canonical requirement list
-│   ├── company_context.yaml    # Company-specific context
-│   └── models.yaml             # Model configurations
-│
-├── prompts/                    # Prompt templates
-│   ├── chunking_prompts.md
-│   ├── mode_prompts.md
-│   └── evaluation_prompts.md
+│   ├── requirements.yaml       # Canonical requirement list (22 requirements)
+│   └── company_context.yaml    # Eventyr company context (7 domains)
 │
 ├── data/                       # Data storage
-│   ├── sources/                # Raw source documents
-│   ├── chunks/                 # Processed chunks
-│   └── vector_db/              # Chroma database
+│   ├── sources/                # Normalized source documents (Markdown)
+│   ├── chunks/                 # Processed semantic chunks (JSON)
+│   ├── vector_db/              # Vector database (pickle + JSON metadata)
+│   ├── sessions/               # Drill mode session data (JSON)
+│   └── weaknesses.json         # Tracked weaknesses (JSON)
 │
 └── docs/                       # Documentation
-    ├── ARCHITECTURE.md
-    ├── INGESTION_GUIDE.md
-    └── EVALUATION_GUIDE.md
+    ├── ARCHITECTURE.md         # System architecture
+    ├── STATUS.md               # Project status
+    ├── SOURCE_PLAN.md          # Source discovery plan
+    └── DISCOVERY_STATUS.md     # Discovery implementation status
 ```
 
 ---
 
-## 🚀 Execution Order (DO NOT SKIP)
+## 🚀 Quick Start
 
-1. ✅ **Enumerate all requirement bullets** (22 total)
-2. ⏳ **Verify corpus completeness**
-3. ⏳ **Ingest + vectorize**
-4. ⏳ **Implement RAG pipeline**
-5. ⏳ **Add modes**
-6. ⏳ **Add evaluation**
-7. ⏳ **Build UI**
+### 1. Setup
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Configure environment (create .env file)
+# Required: OPENAI_API_KEY (or other LLM provider keys)
+```
+
+### 2. Data Ingestion (if not already done)
+
+```bash
+# Discover and normalize sources
+python ingest/discoverer.py
+
+# Generate semantic chunks
+python ingest/chunker.py
+
+# Create embeddings and vector database
+python ingest/embedder.py
+```
+
+### 3. Launch UI
+
+```bash
+python ui/app.py
+```
+
+Access at: `http://localhost:7860`
+
+---
+
+## 📝 Current Status
+
+**Phase:** ✅ **Complete** - System fully functional
+
+**Completed:**
+- ✅ Source discovery and normalization
+- ✅ LLM-based semantic chunking
+- ✅ Vector database (local pickle-based storage)
+- ✅ Retrieval pipeline with query rewriting
+- ✅ Strict answer generation with grounding
+- ✅ 6 interview modes (Explain, Interviewer, Evaluation, Company-Aware, System Design, Rapid Fire)
+- ✅ LLM-as-a-judge evaluation
+- ✅ Gradio UI with transparency features
+- ✅ Drill mode for iterative practice
+- ✅ Weakness tracking with persistence
 
 ---
 
-## 📝 Status
+## 🎯 Features
 
-**Current Phase:** Project setup and requirement enumeration
+### Interview Modes
 
-**Next Steps:**
-- [ ] Complete requirement enumeration and knowledge domain mapping
-- [ ] Implement source discovery pipeline
-- [ ] Implement semantic chunking with LLM
-- [ ] Set up Chroma vector database
-- [ ] Implement RAG pipeline
-- [ ] Add assistant modes
-- [ ] Implement evaluation system
-- [ ] Build Gradio UI
+1. **Explain Mode** - Detailed explanations with clarity focus
+2. **Interviewer Mode** - Simulates senior interviewer with follow-up questions
+3. **Evaluation Mode** - Evaluates candidate answers against knowledge base
+4. **Company-Aware Mode** - Frames answers in Eventyr's context
+5. **System Design Mode** - Emphasizes tradeoffs and failure modes
+6. **Rapid Fire Mode** - Short, precise answers (3-5 sentences)
 
----
+### Key Capabilities
 
-## 🔐 Setup
+- **Strict Grounding**: All answers traceable to retrieved chunks
+- **Refusal Behavior**: System refuses when context is insufficient
+- **Transparency**: Full visibility into retrieval, citations, and confidence
+- **Drill Mode**: Track conversation history for iterative practice
+- **Weakness Tracking**: Automatically tracks missed concepts from evaluations
+- **Debug Mode**: View similarity scores and retrieval metadata
 
-1. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+### Usage Example
 
-2. **Configure environment:**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your API keys
-   ```
-
-3. **Run ingestion:**
-   ```bash
-   python -m ingest.discoverer
-   python -m ingest.chunker
-   ```
-
-4. **Start UI:**
-   ```bash
-   python ui/app.py
-   ```
+1. Enter an interview question (e.g., "How does TypeScript help with large-scale development?")
+2. Select an interview mode
+3. Optionally provide your answer for evaluation
+4. Enable Drill Mode to track conversation history
+5. View the grounded answer with citations
+6. Review evaluation feedback (if candidate answer provided)
+7. Check tracked weaknesses in the accordion panel
 
 ---
+
+## 📚 Documentation
+
+- **[ARCHITECTURE.md](docs/ARCHITECTURE.md)**: System architecture and design
+- **[STATUS.md](docs/STATUS.md)**: Current implementation status
+- **[USAGE.md](docs/USAGE.md)**: User guide and best practices
+- **[SOURCE_PLAN.md](docs/SOURCE_PLAN.md)**: Source discovery plan
+- **[DISCOVERY_STATUS.md](docs/DISCOVERY_STATUS.md)**: Discovery implementation details
 
 ## 📚 References
 

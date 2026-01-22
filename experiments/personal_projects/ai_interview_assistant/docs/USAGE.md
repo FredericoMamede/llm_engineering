@@ -1,0 +1,184 @@
+# Usage Guide
+
+## Overview
+
+The AI Interview Preparation Assistant provides a production-grade RAG system for technical interview preparation. This guide covers how to use the system effectively.
+
+## Basic Usage
+
+### Asking Questions
+
+1. **Enter your question** in the "Interview Question" text box
+2. **Select a mode** from the dropdown:
+   - **Explain Mode**: Best for learning concepts in detail
+   - **Interviewer Mode**: Simulates a real interview with follow-ups
+   - **Evaluation Mode**: Use when you want to evaluate your own answer
+   - **Company-Aware Mode**: Frames answers for Eventyr context
+   - **System Design Mode**: Focuses on tradeoffs and architecture
+   - **Rapid Fire Mode**: Quick, concise answers
+3. **Click "Ask Question"**
+
+### Getting Evaluated
+
+1. Enter your interview question
+2. **Enter your answer** in the "Your Answer" text box
+3. Select a mode (Evaluation Mode is specifically for this)
+4. Click "Ask Question"
+5. Review the evaluation feedback:
+   - **Strengths**: What you got right
+   - **Gaps**: Areas that need improvement
+   - **Missed Concepts**: Specific concepts you didn't mention
+   - **Follow-up Questions**: Suggested questions to probe deeper
+   - **Overall Assessment**: Summary with confidence score
+
+## Advanced Features
+
+### Drill Mode
+
+**Purpose**: Track conversation history for iterative practice sessions.
+
+**How to use**:
+1. Check the "Drill Mode" checkbox
+2. Ask multiple questions in sequence
+3. The system maintains context across questions
+4. View recent context in the "Drill Mode Context" panel
+5. Uncheck to end the session (saves automatically)
+
+**Use cases**:
+- Practice sessions with multiple related questions
+- Building on previous answers
+- Tracking your progress over time
+
+### Weakness Tracking
+
+**Purpose**: Automatically track concepts you struggle with.
+
+**How it works**:
+- When you provide a candidate answer and get evaluated, missed concepts are automatically tracked
+- Weaknesses are stored in `data/weaknesses.json`
+- View tracked weaknesses in the "Tracked Weaknesses" accordion panel
+- Click "Refresh Weaknesses" to update the summary
+
+**What gets tracked**:
+- Concept name
+- Number of occurrences (how many times you missed it)
+- First and last seen dates
+- Related questions
+- Topic categories (TypeScript, React, PostgreSQL, etc.)
+
+**Use cases**:
+- Identify knowledge gaps
+- Focus study efforts
+- Track improvement over time
+
+### Debug Mode
+
+**Purpose**: Inspect system behavior for transparency.
+
+**How to use**:
+1. Check the "Debug Mode" checkbox
+2. Ask a question
+3. View additional information:
+   - Similarity scores for retrieved chunks (color-coded)
+   - Retrieval metadata (query, rewritten query, backend, counts)
+   - Mode configuration (K values, filters)
+
+**Use cases**:
+- Understanding why certain chunks were retrieved
+- Verifying system behavior
+- Troubleshooting retrieval issues
+
+## Understanding the Output
+
+### Answer Display
+
+- **Answer Text**: The generated answer (strictly grounded in retrieved chunks)
+- **Confidence Level**: 🟢 HIGH, 🟡 MEDIUM, or 🔴 LOW
+- **Cited Chunks**: Sources used, with chunk type badges and source URLs
+- **Refusal Reason**: If the system refuses to answer, this explains why
+
+### Retrieved Context Panel
+
+Shows all chunks that were retrieved for the query:
+- Chunk headline
+- Chunk type badge
+- Source URL (clickable)
+- Summary preview
+- Similarity score (if debug mode enabled)
+
+### Evaluation Panel
+
+Only appears when you provide a candidate answer:
+- **Strengths**: ✅ What you got right
+- **Gaps**: ⚠️ Areas for improvement
+- **Missed Concepts**: ❌ Concepts you didn't mention
+- **Follow-up Questions**: 💡 Suggested questions
+- **Overall Assessment**: Summary with confidence score (1-5)
+
+## Best Practices
+
+### For Learning
+
+1. Use **Explain Mode** for detailed explanations
+2. Read the **Cited Chunks** to see sources
+3. Check **Retrieved Context** to see what knowledge was available
+4. Use **Drill Mode** for multi-question practice sessions
+
+### For Practice
+
+1. Use **Interviewer Mode** to simulate real interviews
+2. Provide your own answers and get evaluated
+3. Review **Missed Concepts** and study those areas
+4. Use **Weakness Tracking** to identify patterns
+5. Try **Rapid Fire Mode** for quick practice
+
+### For System Design
+
+1. Use **System Design Mode** for architecture questions
+2. Focus on **tradeoffs** and **failure modes** mentioned
+3. Review **Retrieved Context** for different perspectives
+
+### For Company-Specific Prep
+
+1. Use **Company-Aware Mode** for Eventyr-specific questions
+2. Answers will reference Eventyr's constraints and context
+3. Useful for understanding company-specific tradeoffs
+
+## Troubleshooting
+
+### System Refuses to Answer
+
+**Why**: Insufficient context retrieved or low similarity scores.
+
+**What to do**:
+1. Check the **Refusal Reason** for explanation
+2. Try rephrasing your question
+3. Check **Retrieved Context** to see what was found
+4. Enable **Debug Mode** to see similarity scores
+
+### Low Confidence Answers
+
+**Why**: Few chunks retrieved or low similarity.
+
+**What to do**:
+1. Check **Cited Chunks** - are there enough sources?
+2. Review **Retrieved Context** - are chunks relevant?
+3. Try a more specific question
+4. Check if the topic is covered in the knowledge base
+
+### Evaluation Not Appearing
+
+**Why**: You didn't provide a candidate answer, or Evaluation Mode wasn't used.
+
+**What to do**:
+1. Make sure you entered text in "Your Answer"
+2. For Evaluation Mode, both question and answer are required
+3. For other modes, evaluation appears automatically when you provide an answer
+
+## Tips
+
+- **Be specific**: More specific questions get better answers
+- **Use citations**: Check cited chunks to verify information
+- **Practice regularly**: Use weakness tracking to focus study
+- **Try different modes**: Each mode has different strengths
+- **Review context**: Understanding what knowledge is available helps frame questions
