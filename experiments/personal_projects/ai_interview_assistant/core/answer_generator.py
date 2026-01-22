@@ -122,6 +122,11 @@ INTERVIEW CALIBRATION:
 - Be concise but deep - quality over quantity
 
 ANSWER REQUIREMENTS:
+- Structure your answer for an interview setting:
+  * Start with a concise direct answer (1-2 sentences)
+  * Then provide key points with reasoning
+  * Include tradeoffs, constraints, or edge cases if mentioned in context
+  * End with a brief summary if the answer is long
 - Ground every statement in the retrieved chunks
 - Cite specific chunks when making claims (use chunk IDs: Chunk 1, Chunk 2, etc.)
 - If multiple perspectives exist in the context, acknowledge them
