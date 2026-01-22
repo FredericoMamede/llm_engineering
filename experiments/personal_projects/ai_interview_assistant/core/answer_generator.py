@@ -86,7 +86,8 @@ Source: {chunk.inherited_metadata.get('source_url', 'N/A')}
         self,
         query: str,
         chunks: List[RetrievedChunk],
-        context_text: str
+        context_text: str,
+        mode_instructions: Optional[str] = None
     ) -> str:
         """Create prompt for answer generation."""
         num_chunks = len(chunks)
@@ -131,8 +132,15 @@ If the context is insufficient:
 - State clearly that you cannot answer based on the available information
 - Explain what specific information is missing
 - Suggest what type of knowledge would be needed to answer the question
-
-Generate your answer now. Be precise, grounded, and interview-ready."""
+"""
+        
+        # Add mode-specific instructions if provided
+        if mode_instructions:
+            prompt += f"\n\nMODE-SPECIFIC INSTRUCTIONS:\n{mode_instructions}\n"
+        
+        prompt += "\nGenerate your answer now. Be precise, grounded, and interview-ready."
+        
+        return prompt
 
         return prompt
     
@@ -253,7 +261,8 @@ Generate your answer now. Be precise, grounded, and interview-ready."""
         self,
         retrieval_result: RetrievalResult,
         min_chunks: int = 1,
-        min_similarity: float = 0.2
+        min_similarity: float = 0.2,
+        mode_instructions: Optional[str] = None
     ) -> GeneratedAnswer:
         """
         Generate an answer from retrieved context.
@@ -300,7 +309,8 @@ Generate your answer now. Be precise, grounded, and interview-ready."""
         prompt = self._create_answer_prompt(
             retrieval_result.original_query,
             filtered_chunks,
-            context_text
+            context_text,
+            mode_instructions=mode_instructions
         )
         
         # Generate answer
