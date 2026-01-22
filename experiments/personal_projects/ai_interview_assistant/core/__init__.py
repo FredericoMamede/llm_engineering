@@ -2,16 +2,24 @@
 Core RAG pipeline components for AI Interview Preparation Assistant.
 """
 
-from .rag_pipeline import RAGPipeline
-from .query_rewriter import QueryRewriter
-from .retriever import Retriever
-from .reranker import Reranker
-from .context_manager import ContextManager
+# Import actual modules that exist
+from .vector_store import VectorStore, LocalVectorStore, get_vector_store
+from .retriever import KnowledgeRetriever, RetrievalResult, RetrievedChunk
+from .answer_generator import AnswerGenerator, GeneratedAnswer, ConfidenceLevel, CitedChunk
+from .modes import ModeOrchestrator, InterviewMode, ModeConfig
 
 __all__ = [
-    "RAGPipeline",
-    "QueryRewriter",
-    "Retriever",
-    "Reranker",
-    "ContextManager",
+    "VectorStore",
+    "LocalVectorStore",
+    "get_vector_store",
+    "KnowledgeRetriever",
+    "RetrievalResult",
+    "RetrievedChunk",
+    "AnswerGenerator",
+    "GeneratedAnswer",
+    "ConfidenceLevel",
+    "CitedChunk",
+    "ModeOrchestrator",
+    "InterviewMode",
+    "ModeConfig",
 ]

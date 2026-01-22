@@ -2,10 +2,9 @@
 Evaluation system components for AI Interview Preparation Assistant.
 """
 
-from .judge import LLMJudge
-from .metrics import EvaluationMetrics
+from .judge import AnswerJudge, EvaluationFeedback
 
 __all__ = [
-    "LLMJudge",
-    "EvaluationMetrics",
+    "AnswerJudge",
+    "EvaluationFeedback",
 ]
