@@ -175,7 +175,6 @@ Provide your evaluation now."""
     
     def _parse_evaluation_response(self, response_text: str) -> EvaluationFeedback:
         """Parse LLM evaluation response into structured feedback."""
-        import re
         feedback = EvaluationFeedback()
         
         # Normalize text
@@ -339,7 +338,6 @@ Provide your evaluation now."""
                 if current_section == 'overall':
                     current_items.append(line_stripped)
                 elif current_section == 'confidence':
-                    import re
                     score_match = re.search(r'\b([1-5])\b', line_stripped)
                     if score_match:
                         try:

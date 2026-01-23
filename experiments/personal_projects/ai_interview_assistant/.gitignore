@@ -40,6 +40,9 @@ ENV/
 data/sources/
 data/chunks/
 data/vector_db/
+data/interview_sessions/
+data/sessions/
+data/weaknesses.json
 *.db
 *.sqlite
 

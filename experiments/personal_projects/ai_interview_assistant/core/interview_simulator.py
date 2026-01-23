@@ -359,12 +359,17 @@ class InterviewSimulator:
             base_query = "technical interview questions"
         
         # Retrieve knowledge chunks
-        retrieval_result = self.retriever.retrieve(
-            base_query,
+        # Create a retriever with higher K values for question generation
+        question_retriever = KnowledgeRetriever(
+            vector_db_dir=self.vector_db_dir,
+            backend=self.backend,
+            enable_query_rewrite=True,
             top_k_original=15,
             top_k_rewritten=15,
-            final_k=10,
-            enable_query_rewrite=True,
+            final_k=10
+        )
+        retrieval_result = question_retriever.retrieve(
+            base_query,
             debug=False
         )
         
@@ -385,12 +390,8 @@ class InterviewSimulator:
         
         if not retrieval_result.retrieved_chunks:
             # If all chunks were filtered, use original set
-            retrieval_result = self.retriever.retrieve(
+            retrieval_result = question_retriever.retrieve(
                 base_query,
-                top_k_original=15,
-                top_k_rewritten=15,
-                final_k=10,
-                enable_query_rewrite=True,
                 debug=False
             )
         
@@ -532,24 +533,25 @@ Generate the question now."""
         self.current_session.answers_given.append(answer)
         
         # Retrieve context for evaluation
-        retrieval_result = self.retriever.retrieve(
-            question.question_text,
+        # Create a retriever with appropriate K values for evaluation
+        eval_retriever = KnowledgeRetriever(
+            vector_db_dir=self.vector_db_dir,
+            backend=self.backend,
+            enable_query_rewrite=True,
             top_k_original=10,
             top_k_rewritten=10,
-            final_k=8,
-            enable_query_rewrite=True,
+            final_k=8
+        )
+        retrieval_result = eval_retriever.retrieve(
+            question.question_text,
             debug=False
         )
         
         if not retrieval_result.retrieved_chunks:
             # Fallback: use source chunks if available
             # This is a simplified fallback - in production, we'd store full chunks
-            retrieval_result = self.retriever.retrieve(
+            retrieval_result = eval_retriever.retrieve(
                 question.question_text,
-                top_k_original=10,
-                top_k_rewritten=10,
-                final_k=8,
-                enable_query_rewrite=True,
                 debug=False
             )
         
@@ -645,12 +647,17 @@ Generate the question now."""
         evaluation = self.current_session.current_evaluation
         
         # Retrieve context
-        retrieval_result = self.retriever.retrieve(
-            question.question_text,
+        # Create a retriever for teaching explanations
+        teaching_retriever = KnowledgeRetriever(
+            vector_db_dir=self.vector_db_dir,
+            backend=self.backend,
+            enable_query_rewrite=True,
             top_k_original=10,
             top_k_rewritten=10,
-            final_k=8,
-            enable_query_rewrite=True,
+            final_k=8
+        )
+        retrieval_result = teaching_retriever.retrieve(
+            question.question_text,
             debug=False
         )
         

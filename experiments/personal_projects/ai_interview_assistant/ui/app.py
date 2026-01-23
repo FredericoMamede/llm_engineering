@@ -577,7 +577,6 @@ def create_interview_simulator_ui():
                         gr.update(value=""),
                         gr.update(value=""),
                         gr.update(value=""),
-                        gr.update(value=""),
                         session
                     )
                 else:
@@ -593,7 +592,6 @@ def create_interview_simulator_ui():
                         gr.update(value=""),
                         gr.update(value=""),
                         gr.update(value=""),
-                        gr.update(value=""),
                         session
                     )
             except Exception as e:
@@ -603,7 +601,6 @@ def create_interview_simulator_ui():
                     gr.update(value="N/A"),
                     gr.update(value=""),
                     gr.update(value=f"**Error starting session: {str(e)}**"),
-                    gr.update(value=""),
                     gr.update(value=""),
                     gr.update(value=""),
                     gr.update(value=""),
