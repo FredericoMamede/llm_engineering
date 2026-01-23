@@ -12,7 +12,8 @@ import gradio as gr
 try:
     from core.modes import ModeOrchestrator, InterviewMode
     from evaluation.judge import AnswerJudge
-    from core.interview_simulator import InterviewSimulator, Difficulty, Outcome
+    from core.interview_simulator import InterviewSimulator, Difficulty, Outcome, ExaminerPersonality
+    from core.config_loader import ConfigLoader
     from .drill_mode import DrillModeManager
     from .weakness_tracker import WeaknessTracker
 except ImportError:
@@ -22,7 +23,8 @@ except ImportError:
         sys.path.insert(0, str(project_root))
     from core.modes import ModeOrchestrator, InterviewMode
     from evaluation.judge import AnswerJudge
-    from core.interview_simulator import InterviewSimulator, Difficulty, Outcome
+    from core.interview_simulator import InterviewSimulator, Difficulty, Outcome, ExaminerPersonality
+    from core.config_loader import ConfigLoader
     from ui.drill_mode import DrillModeManager
     from ui.weakness_tracker import WeaknessTracker
 
@@ -36,6 +38,7 @@ judge = AnswerJudge()
 drill_manager = DrillModeManager()
 weakness_tracker = WeaknessTracker()
 simulator = InterviewSimulator(vector_db_dir=VECTOR_DB_DIR, backend="local")
+config_loader = ConfigLoader()
 
 
 def format_cited_chunks(cited_chunks) -> str:
@@ -368,16 +371,27 @@ def create_interview_simulator_ui():
         
         # Session Configuration
         with gr.Accordion("Session Configuration", open=True):
+            # Load available options
+            companies = config_loader.load_companies()
+            requirement_sets = config_loader.load_requirement_sets()
+            
+            company_choices = [(c['name'], c['id']) for c in companies] if companies else [("Eventyr", "eventyr")]
+            req_set_choices = [(r['name'], r['id']) for r in requirement_sets] if requirement_sets else [("AI-First MERN Fullstack Developer", "ai-first-mern-fullstack")]
+            
             with gr.Row():
-                company_input = gr.Textbox(
+                company_dropdown = gr.Dropdown(
+                    choices=company_choices,
+                    value=company_choices[0][1] if company_choices else "eventyr",
                     label="Company",
-                    value="Eventyr",
-                    interactive=True
+                    interactive=True,
+                    info="Select company context for questions"
                 )
-                requirement_set_input = gr.Textbox(
+                requirement_set_dropdown = gr.Dropdown(
+                    choices=req_set_choices,
+                    value=req_set_choices[0][1] if req_set_choices else "ai-first-mern-fullstack",
                     label="Requirement Set",
-                    value="ai-first-mern-fullstack",
-                    interactive=True
+                    interactive=True,
+                    info="Select requirement set to focus on"
                 )
             
             with gr.Row():
@@ -387,6 +401,15 @@ def create_interview_simulator_ui():
                     label="Target Difficulty",
                     interactive=True
                 )
+                examiner_personality_dropdown = gr.Dropdown(
+                    choices=["strict", "balanced", "supportive"],
+                    value="balanced",
+                    label="Examiner Personality",
+                    interactive=True,
+                    info="Strict: High bar, minimal feedback | Balanced: Realistic | Supportive: Teaching-oriented"
+                )
+            
+            with gr.Row():
                 session_length_input = gr.Number(
                     label="Max Questions (optional)",
                     value=None,
@@ -484,12 +507,22 @@ def create_interview_simulator_ui():
                 label="Session Progress"
             )
         
+        # Coverage Visualization Panel
+        with gr.Accordion("Coverage Visualization", open=False):
+            coverage_display = gr.Markdown(
+                value="**No coverage data yet.**",
+                label="Coverage by Requirement, Topic, and Chunk Type"
+            )
+        
         # Session Summary (when ended)
-        session_summary_display = gr.Markdown(
-            value="",
-            label="Session Summary",
-            visible=False
-        )
+        with gr.Accordion("Session Summary", open=False, visible=False) as summary_accordion:
+            session_summary_display = gr.Markdown(
+                value="",
+                label="Session Summary"
+            )
+            with gr.Row():
+                export_json_btn = gr.Button("Export as JSON", variant="secondary")
+                export_markdown_btn = gr.Button("Export as Markdown", variant="secondary")
         
         # State management
         session_state_var = gr.State(value=None)
@@ -541,24 +574,80 @@ def create_interview_simulator_ui():
             except Exception as e:
                 return gr.update(value=f"**Error: {str(e)}**")
         
-        def start_session(company, req_set, difficulty, session_length, focus_areas):
+        def update_coverage(session_state):
+            """Update coverage visualization."""
+            if not session_state:
+                return gr.update(value="**No active session.**")
+            
+            try:
+                session = simulator.current_session
+                if not session:
+                    return gr.update(value="**No active session.**")
+                
+                # Build coverage visualization
+                coverage_lines = ["## Coverage Visualization\n"]
+                
+                # Coverage by requirement
+                if session.coverage_by_requirement:
+                    coverage_lines.append("### By Requirement ID")
+                    for req_id, count in sorted(session.coverage_by_requirement.items(), key=lambda x: x[1], reverse=True)[:10]:
+                        coverage_lines.append(f"- **Requirement {req_id}**: {count} question(s)")
+                    coverage_lines.append("")
+                
+                # Coverage by topic
+                if session.coverage_by_topic:
+                    coverage_lines.append("### By Topic")
+                    for topic, count in sorted(session.coverage_by_topic.items(), key=lambda x: x[1], reverse=True)[:10]:
+                        coverage_lines.append(f"- **{topic}**: {count} question(s)")
+                    coverage_lines.append("")
+                
+                # Coverage by chunk type
+                if session.coverage_by_chunk_type:
+                    coverage_lines.append("### By Chunk Type")
+                    for chunk_type, count in sorted(session.coverage_by_chunk_type.items(), key=lambda x: x[1], reverse=True):
+                        coverage_lines.append(f"- **{chunk_type}**: {count} question(s)")
+                    coverage_lines.append("")
+                
+                if len(coverage_lines) == 1:
+                    coverage_lines.append("**No coverage data yet.**")
+                
+                return gr.update(value="\n".join(coverage_lines))
+            except Exception as e:
+                return gr.update(value=f"**Error: {str(e)}**")
+        
+        def start_session(company_id, req_set_id, difficulty, personality, session_length, focus_areas):
             """Start a new interview session."""
             try:
+                # Get company and requirement set names
+                company_data = config_loader.get_company_by_id(company_id)
+                req_set_data = config_loader.get_requirement_set_by_id(req_set_id)
+                
+                company_name = company_data['name'] if company_data else company_id
+                req_set_name = req_set_data['name'] if req_set_data else req_set_id
+                
                 # Parse focus areas
                 focus_list = [f.strip() for f in focus_areas.split(",") if f.strip()] if focus_areas else []
                 
                 # Parse difficulty
                 diff_enum = Difficulty(difficulty.lower())
                 
+                # Parse personality (handle both string and tuple from dropdown)
+                if isinstance(personality, (list, tuple)):
+                    personality_str = personality[1] if len(personality) > 1 else personality[0]
+                else:
+                    personality_str = str(personality)
+                personality_enum = ExaminerPersonality(personality_str.lower())
+                
                 # Parse session length
                 length = int(session_length) if session_length else None
                 
                 session = simulator.start_session(
-                    company=company,
-                    requirement_set=req_set,
+                    company=company_name,
+                    requirement_set=req_set_name,
                     difficulty_target=diff_enum,
                     focus_areas=focus_list,
-                    session_length=length
+                    session_length=length,
+                    examiner_personality=personality_enum
                 )
                 
                 # Generate first question
@@ -577,6 +666,7 @@ def create_interview_simulator_ui():
                         gr.update(value=""),
                         gr.update(value=""),
                         gr.update(value=""),
+                        gr.update(value="**No coverage data yet.**"),
                         session
                     )
                 else:
@@ -607,6 +697,7 @@ def create_interview_simulator_ui():
                     gr.update(value=""),
                     gr.update(value=""),
                     gr.update(value=""),
+                    gr.update(value="**No coverage data yet.**"),
                     None
                 )
         
@@ -623,6 +714,7 @@ def create_interview_simulator_ui():
                     gr.update(value=""),
                     gr.update(value=""),
                     gr.update(value=""),
+                    gr.update(),
                     session_state
                 )
             
@@ -658,6 +750,9 @@ def create_interview_simulator_ui():
                 
                 outcome_text += f"\n\n**Confidence Score:** {feedback.confidence_score}/5"
                 
+                # Update coverage visualization
+                coverage_update = update_coverage(session_state)
+                
                 return (
                     gr.update(),
                     gr.update(value="**Evaluation complete. See details below.**"),
@@ -667,7 +762,7 @@ def create_interview_simulator_ui():
                     gr.update(value=followup_text),
                     gr.update(value=feedback.overall_assessment),
                     gr.update(value=outcome_text),
-                    gr.update(value=""),
+                    coverage_update,
                     session_state
                 )
             except Exception as e:
@@ -680,7 +775,7 @@ def create_interview_simulator_ui():
                     gr.update(value=""),
                     gr.update(value=""),
                     gr.update(value=""),
-                    gr.update(value=""),
+                    gr.update(value="**Error updating coverage.**"),
                     session_state
                 )
         
@@ -740,62 +835,129 @@ def create_interview_simulator_ui():
                     session_state
                 )
         
+        def format_session_summary(summary: Dict[str, Any]) -> str:
+            """Format session summary as markdown."""
+            duration_min = summary.get('duration_seconds', 0) // 60
+            duration_sec = summary.get('duration_seconds', 0) % 60
+            
+            summary_text = f"""## Session Summary
+
+**Session ID:** {summary['session_id']}
+**Started:** {summary['started_at'][:19] if summary.get('started_at') else 'N/A'}
+**Ended:** {summary['ended_at'][:19] if summary.get('ended_at') else 'N/A'}
+**Duration:** {duration_min}m {duration_sec}s
+
+### Statistics
+- **Total Questions:** {summary['total_questions']}
+- **Total Answers:** {summary['total_answers']}
+- **Total Evaluations:** {summary['total_evaluations']}
+- **Accuracy:** {summary['accuracy']}%
+- **Correct:** {summary['correct']}
+- **Partial:** {summary['partial']}
+- **Incorrect:** {summary['incorrect']}
+- **Final Difficulty:** {summary['final_difficulty'].upper()}
+
+### Strong Areas
+"""
+            strong_areas = summary.get('strong_areas', {})
+            if strong_areas.get('requirements'):
+                summary_text += "\n**Requirements:**\n"
+                for req_id in strong_areas['requirements']:
+                    summary_text += f"- Requirement {req_id}\n"
+            if strong_areas.get('domains'):
+                summary_text += "\n**Company Domains:**\n"
+                for domain in strong_areas['domains']:
+                    summary_text += f"- {domain}\n"
+            
+            summary_text += "\n### Weak Areas\n"
+            weaknesses = summary.get('weak_areas', [])
+            if weaknesses:
+                for w in weaknesses[:5]:
+                    summary_text += f"- {w}\n"
+            else:
+                summary_text += "*None identified*\n"
+            
+            summary_text += "\n### Coverage\n"
+            covered = summary.get('covered_topics', {})
+            summary_text += f"- **Requirements Covered:** {len(covered.get('requirements', []))}\n"
+            summary_text += f"- **Domains Covered:** {len(covered.get('domains', []))}\n"
+            
+            # Example questions
+            examples = summary.get('example_questions', [])
+            if examples:
+                summary_text += "\n### Example Questions\n"
+                for ex in examples:
+                    summary_text += f"\n**Q:** {ex['question'][:100]}...\n"
+                    summary_text += f"- Difficulty: {ex['difficulty'].upper()}\n"
+                    summary_text += f"- Outcome: {ex['outcome'].upper()}\n"
+                    summary_text += f"- Confidence: {ex['confidence_score']}/5\n"
+            
+            summary_text += "\n### Recommendations\n"
+            recommendations = summary.get('recommendations', [])
+            if recommendations:
+                for r in recommendations:
+                    summary_text += f"- {r}\n"
+            else:
+                summary_text += "*Continue practicing*\n"
+            
+            return summary_text
+        
         def end_session(session_state):
             """End session and generate summary."""
             if not session_state:
                 return (
                     gr.update(value="**No active session.**"),
-                    gr.update(visible=False)
+                    gr.update(visible=False),
+                    None
                 )
             
             try:
                 summary = simulator.end_session()
                 if summary:
-                    summary_text = f"""
-## Session Summary
-
-**Session ID:** {summary['session_id']}
-**Started:** {summary['started_at']}
-**Ended:** {summary['ended_at']}
-
-### Statistics
-- **Total Questions:** {summary['total_questions']}
-- **Total Answers:** {summary['total_answers']}
-- **Accuracy:** {summary['accuracy']}%
-- **Correct:** {summary['correct']}
-- **Partial:** {summary['partial']}
-- **Incorrect:** {summary['incorrect']}
-- **Final Difficulty:** {summary['final_difficulty']}
-
-### Top Weaknesses
-{chr(10).join([f"- {w}" for w in summary['top_weaknesses'][:5]])}
-
-### Recommendations
-{chr(10).join([f"- {r}" for r in summary['recommendations']])}
-"""
+                    summary_text = format_session_summary(summary)
                     return (
                         gr.update(value=summary_text),
-                        gr.update(visible=True)
+                        gr.update(visible=True),
+                        summary
                     )
                 else:
                     return (
                         gr.update(value="**Error generating summary.**"),
-                        gr.update(visible=True)
+                        gr.update(visible=True),
+                        None
                     )
             except Exception as e:
                 return (
                     gr.update(value=f"**Error: {str(e)}**"),
-                    gr.update(visible=True)
+                    gr.update(visible=True),
+                    None
                 )
+        
+        summary_data_var = gr.State(value=None)
+        
+        def export_summary_json(summary_data):
+            """Export summary as JSON."""
+            if not summary_data:
+                return "No summary data available."
+            
+            import json
+            return json.dumps(summary_data, indent=2, ensure_ascii=False)
+        
+        def export_summary_markdown(summary_data):
+            """Export summary as Markdown."""
+            if not summary_data:
+                return "No summary data available."
+            
+            return format_session_summary(summary_data)
         
         # Event handlers
         start_session_btn.click(
             fn=start_session,
-            inputs=[company_input, requirement_set_input, difficulty_dropdown, session_length_input, focus_areas_input],
+            inputs=[company_dropdown, requirement_set_dropdown, difficulty_dropdown, examiner_personality_dropdown, session_length_input, focus_areas_input],
             outputs=[
                 question_display, requirement_tag, difficulty_tag, answer_input,
                 evaluation_status, eval_strengths, eval_gaps, eval_missed, eval_followup,
-                eval_overall, eval_outcome, session_state_var
+                eval_overall, eval_outcome, coverage_display, session_state_var
             ]
         )
         
@@ -804,7 +966,7 @@ def create_interview_simulator_ui():
             inputs=[answer_input, session_state_var],
             outputs=[
                 answer_input, evaluation_status, eval_strengths, eval_gaps, eval_missed,
-                eval_followup, eval_overall, eval_outcome, teaching_display, session_state_var
+                eval_followup, eval_overall, eval_outcome, coverage_display, session_state_var
             ]
         ).then(
             fn=update_progress,
@@ -841,6 +1003,10 @@ def create_interview_simulator_ui():
             inputs=[session_state_var],
             outputs=[question_display, requirement_tag, difficulty_tag, answer_input, evaluation_status, session_state_var]
         ).then(
+            fn=update_coverage,
+            inputs=[session_state_var],
+            outputs=[coverage_display]
+        ).then(
             fn=update_progress,
             inputs=[session_state_var],
             outputs=[progress_display]
@@ -849,7 +1015,19 @@ def create_interview_simulator_ui():
         end_session_btn.click(
             fn=end_session,
             inputs=[session_state_var],
-            outputs=[session_summary_display, session_summary_display]
+            outputs=[session_summary_display, summary_accordion, summary_data_var]
+        )
+        
+        export_json_btn.click(
+            fn=export_summary_json,
+            inputs=[summary_data_var],
+            outputs=[session_summary_display]
+        )
+        
+        export_markdown_btn.click(
+            fn=export_summary_markdown,
+            inputs=[summary_data_var],
+            outputs=[session_summary_display]
         )
 
 
