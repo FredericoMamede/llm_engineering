@@ -44,9 +44,13 @@ The Interview Simulator inverts control: the system asks questions, you answer, 
 
 1. Navigate to the **Interview Simulator** tab
 2. Configure your session:
-   - **Company**: Default is "Eventyr"
-   - **Requirement Set**: Default is "ai-first-mern-fullstack"
+   - **Company**: Select from dropdown (populated from `company_context.yaml`)
+   - **Requirement Set**: Select from dropdown (populated from `requirements.yaml`)
    - **Target Difficulty**: Choose easy, medium, or hard
+   - **Examiner Personality**: 
+     - **Strict**: High bar, minimal feedback, terse
+     - **Balanced**: Realistic senior engineer interviewer (default)
+     - **Supportive**: Teaching-oriented, encouraging
    - **Max Questions** (optional): Set a limit for the session
    - **Focus Areas** (optional): Comma-separated topics to prioritize
 3. Click **"Start Session"**
@@ -106,13 +110,51 @@ The "Progress" accordion shows:
 - Coverage (requirements and domains covered)
 - Weaknesses triggered
 
+### Coverage Visualization
+
+The "Coverage Visualization" accordion shows what has been tested:
+- **By Requirement ID**: How many questions covered each requirement
+- **By Topic**: Coverage by technical topic (TypeScript, React, PostgreSQL, etc.)
+- **By Chunk Type**: Coverage by chunk type (concept, tradeoff, failure_mode, etc.)
+
+This helps you see:
+- Which requirements you've practiced
+- Which topics need more coverage
+- What types of questions you've encountered
+
+**Note**: Coverage means "asked about", not "mastered". Use this to identify gaps in your practice.
+
 ### Session Summary
 
-When you end a session, you'll receive a summary with:
-- Session statistics (total questions, accuracy, etc.)
-- Top weaknesses identified
-- Study recommendations
-- Suggested focus areas for next session
+When you end a session, you'll receive a comprehensive summary with:
+
+**Statistics:**
+- Total questions, answers, evaluations
+- Accuracy percentage
+- Correct/Partial/Incorrect breakdown
+- Session duration
+- Final difficulty level
+
+**Performance Analysis:**
+- **Strong Areas**: Requirements/domains where you performed well (2+ correct answers)
+- **Weak Areas**: Top weaknesses identified during the session
+- **Coverage**: Requirements and domains covered
+- **Difficulty Progression**: How difficulty changed over the session
+
+**Example Questions:**
+- Representative questions with outcomes (showing different result types)
+- Includes difficulty, outcome, and confidence scores
+
+**Recommendations:**
+- Focus areas based on weaknesses
+- Difficulty suggestions
+- Coverage recommendations
+
+**Export Options:**
+- **Export as JSON**: Full session data for analysis
+- **Export as Markdown**: Formatted summary for notes
+
+The summary is grounded in actual session data - no hallucinated insights.
 
 ### Difficulty Progression
 
@@ -122,6 +164,31 @@ The system adapts difficulty automatically:
 - **Partial** answers don't change difficulty
 
 This ensures you're always challenged at an appropriate level.
+
+### Examiner Personality
+
+Choose how the interviewer behaves:
+
+- **Strict**: 
+  - High bar for correctness
+  - Minimal feedback
+  - Terse, direct communication
+  - No hints or encouragement
+  - Best for: Realistic interview simulation
+
+- **Balanced** (default):
+  - Realistic senior engineer interviewer
+  - Fair, constructive feedback
+  - Professional tone
+  - Best for: Standard practice
+
+- **Supportive**:
+  - Teaching-oriented approach
+  - Encouraging feedback
+  - Acknowledges partial understanding
+  - Best for: Learning-focused practice
+
+**Note**: Personality affects feedback tone and question phrasing, but **not** scoring logic. All evaluations use the same grounded criteria.
 
 ## Advanced Features (Q&A Mode)
 
