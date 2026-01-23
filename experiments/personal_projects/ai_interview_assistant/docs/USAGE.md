@@ -2,9 +2,14 @@
 
 ## Overview
 
-The AI Interview Preparation Assistant provides a production-grade RAG system for technical interview preparation. This guide covers how to use the system effectively.
+The AI Interview Preparation Assistant provides a production-grade RAG system for technical interview preparation. The system offers two main modes:
 
-## Basic Usage
+- **Q&A Mode**: You ask questions, the system provides grounded answers
+- **Interview Simulator**: The system asks questions, you answer, and receive evaluation with optional teaching
+
+This guide covers how to use both modes effectively.
+
+## Q&A Mode Usage
 
 ### Asking Questions
 
@@ -31,7 +36,94 @@ The AI Interview Preparation Assistant provides a production-grade RAG system fo
    - **Follow-up Questions**: Suggested questions to probe deeper
    - **Overall Assessment**: Summary with confidence score
 
-## Advanced Features
+## Interview Simulator Usage
+
+The Interview Simulator inverts control: the system asks questions, you answer, and receive evaluation. Teaching is available on demand only.
+
+### Starting a Session
+
+1. Navigate to the **Interview Simulator** tab
+2. Configure your session:
+   - **Company**: Default is "Eventyr"
+   - **Requirement Set**: Default is "ai-first-mern-fullstack"
+   - **Target Difficulty**: Choose easy, medium, or hard
+   - **Max Questions** (optional): Set a limit for the session
+   - **Focus Areas** (optional): Comma-separated topics to prioritize
+3. Click **"Start Session"**
+4. The system generates the first question automatically
+
+### Answering Questions
+
+1. Read the question displayed in the "Current Question" panel
+2. Note the **Requirement/Domain** tag and **Difficulty** level
+3. Enter your answer in the "Your Answer" text box
+4. Click **"Submit Answer"**
+5. Review the evaluation in the "Evaluation" panel
+
+### Understanding Evaluation
+
+After submitting an answer, you'll see:
+
+- **Strengths**: ✅ What you got right
+- **Gaps**: ⚠️ Areas that need improvement
+- **Missed Concepts**: ❌ Specific concepts you didn't mention
+- **Follow-up Questions**: 💡 Suggested questions to probe deeper
+- **Overall Assessment**: Summary with confidence score
+- **Outcome**: ✅ CORRECT, ⚠️ PARTIAL, or ❌ INCORRECT
+
+The outcome is determined by your confidence score:
+- **4-5**: CORRECT (strong answer)
+- **3**: PARTIAL (some gaps)
+- **1-2**: INCORRECT (needs improvement)
+
+### Teaching Options (On Demand)
+
+The system does **not** automatically teach. You must explicitly request it:
+
+1. **Teach Me (Full Explanation)**: Complete explanation of the topic
+2. **Show Ideal Answer**: What a strong answer would look like
+3. **Why Was My Answer Weak?**: Explanation of what was missing or incorrect
+4. **Explain Missed Concepts**: Detailed explanation of concepts you didn't mention
+
+All teaching is grounded in retrieved chunks and cites sources.
+
+### Session Controls
+
+- **Next Question**: Generate a new question (difficulty may adjust based on performance)
+- **Retry Question**: Answer the same question again
+- **Ask Follow-up**: Request a follow-up question on the same topic
+- **Move On**: Skip to the next question without retry
+- **End Session**: Conclude the session and view summary
+
+### Progress Tracking
+
+The "Progress" accordion shows:
+- Questions asked, answers given, evaluations completed
+- Accuracy percentage
+- Correct/Partial/Incorrect counts
+- Current difficulty level
+- Consecutive correct/incorrect streak
+- Coverage (requirements and domains covered)
+- Weaknesses triggered
+
+### Session Summary
+
+When you end a session, you'll receive a summary with:
+- Session statistics (total questions, accuracy, etc.)
+- Top weaknesses identified
+- Study recommendations
+- Suggested focus areas for next session
+
+### Difficulty Progression
+
+The system adapts difficulty automatically:
+- **Escalates** after 2 consecutive correct answers
+- **Descalates** after 2 consecutive incorrect answers
+- **Partial** answers don't change difficulty
+
+This ensures you're always challenged at an appropriate level.
+
+## Advanced Features (Q&A Mode)
 
 ### Drill Mode
 
@@ -175,10 +267,35 @@ Only appears when you provide a candidate answer:
 2. For Evaluation Mode, both question and answer are required
 3. For other modes, evaluation appears automatically when you provide an answer
 
+## Who This Tool Is For
+
+This tool is designed for:
+
+- **Interview Preparation**: Practice answering technical interview questions with grounded, accurate information
+- **Self-Assessment**: Evaluate your own answers against a knowledge base to identify gaps
+- **Skill Gap Discovery**: Automatically track concepts you struggle with to focus study efforts
+- **Adaptive Practice**: Interview Simulator adjusts difficulty to match your skill level
+- **Company-Specific Prep**: Understand how to frame answers for specific companies (e.g., Eventyr)
+
+The system emphasizes:
+- **Grounded answers**: All information is traceable to sources
+- **No hallucinations**: System refuses when context is insufficient
+- **Transparency**: Full visibility into retrieval and evaluation
+- **Privacy**: All data (sessions, weaknesses) stored locally
+
 ## Tips
 
+### For Q&A Mode
 - **Be specific**: More specific questions get better answers
 - **Use citations**: Check cited chunks to verify information
 - **Practice regularly**: Use weakness tracking to focus study
 - **Try different modes**: Each mode has different strengths
 - **Review context**: Understanding what knowledge is available helps frame questions
+
+### For Interview Simulator
+- **Answer honestly**: The system evaluates based on what you know, not what you guess
+- **Request teaching when stuck**: Don't hesitate to use teaching options
+- **Review missed concepts**: These are automatically tracked for you
+- **Use focus areas**: Narrow down practice to specific topics
+- **Check progress regularly**: Monitor your improvement over time
+- **End sessions thoughtfully**: Review summaries to plan next practice session

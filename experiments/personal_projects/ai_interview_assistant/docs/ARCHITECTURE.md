@@ -88,20 +88,60 @@ Query → Rewrite → Dual Retrieval → Merge & Deduplicate → Filter → Answ
 - Grounded evaluation (only uses retrieved chunks)
 - Robust parsing of LLM evaluation responses
 
-### 5. UI Layer
+### 5. Interview Simulator Layer
 
 **Components:**
-- `ui/app.py`: Gradio interface
+- `core/interview_simulator.py`: Interview Simulator with session management
+
+**Key Features:**
+- Autonomous question generation from retrieved chunks
+- Session lifecycle management (start, progress, end)
+- Adaptive difficulty progression
+- Answer evaluation using existing AnswerJudge
+- Teaching on demand (opt-in only)
+- Session persistence (JSON files)
+- Weakness tracking integration
+
+**Architecture:**
+- Reuses existing components: `KnowledgeRetriever`, `AnswerGenerator`, `AnswerJudge`, `WeaknessTracker`
+- No duplicated logic - leverages shared RAG pipeline
+- Questions are generated from retrieved chunks (grounded, not synthetic)
+- Teaching is strictly opt-in - system behaves as interviewer first
+
+**Session Lifecycle:**
+1. **Start Session**: Configure company, requirement set, difficulty, focus areas
+2. **Question Generation**: System retrieves chunks and generates question using LLM
+3. **User Answer**: User provides free-text answer
+4. **Evaluation**: System evaluates using AnswerJudge (strict, no hints)
+5. **Outcome Decision**: Correct/Partial/Incorrect based on confidence score
+6. **User Actions**: User can request teaching, retry, follow-up, or move on
+7. **Teaching (On Demand)**: Four types - full explanation, ideal answer, why weak, missed concepts
+8. **Difficulty Progression**: Escalates after 2 consecutive correct, descalates after 2 consecutive incorrect
+9. **Session Summary**: Generated on end with statistics, weaknesses, recommendations
+
+### 6. UI Layer
+
+**Components:**
+- `ui/app.py`: Gradio interface with multiple tabs
 - `ui/drill_mode.py`: Drill mode conversation tracking
 - `ui/weakness_tracker.py`: Weakness tracking with JSON persistence
 
 **Key Features:**
-- Mode selector
-- Retrieved context viewer with badges and highlighting
-- Answer + evaluation panel
-- Debug visibility (similarity scores, retrieval metadata)
-- Drill mode for iterative practice
-- Weakness tracking with automatic persistence
+- **Q&A Mode Tab**: Traditional question-answer interface
+  - Mode selector
+  - Retrieved context viewer with badges and highlighting
+  - Answer + evaluation panel
+  - Debug visibility (similarity scores, retrieval metadata)
+  - Drill mode for iterative practice
+  - Weakness tracking with automatic persistence
+- **Interview Simulator Tab**: System-driven interview interface
+  - Session configuration
+  - Question display with metadata
+  - Answer input and submission
+  - Evaluation panel
+  - Teaching panel (on demand)
+  - Progress tracking
+  - Session controls
 - Confidence badges and visual indicators
 
 ## Data Flow
@@ -114,11 +154,11 @@ Query → Rewrite → Dual Retrieval → Merge & Deduplicate → Filter → Answ
 3. Normalization (clean Markdown)
 4. Semantic Chunking (LLM-based with structured outputs)
 5. Embedding (all-MiniLM-L6-v2)
-6. Vector Store (Chroma with metadata)
+6. Vector Store (local pickle-based with JSON metadata)
 7. Coverage Verification (checklist per requirement)
 ```
 
-### Query Flow
+### Query Flow (Q&A Mode)
 
 ```
 1. User Query + Mode Selection
@@ -129,8 +169,34 @@ Query → Rewrite → Dual Retrieval → Merge & Deduplicate → Filter → Answ
 6. Context Validation (sufficient coverage check)
 7. Mode-Specific Prompt Construction
 8. Answer Generation (strict context injection)
-9. Evaluation (LLM-as-a-judge)
+9. Evaluation (LLM-as-a-judge, if candidate answer provided)
 10. Response (answer + evaluation + sources)
+```
+
+### Interview Simulator Flow
+
+```
+1. Session Start (configuration)
+2. Question Generation:
+   - Retrieve chunks (considering weaknesses, focus areas, difficulty)
+   - Generate question from chunks using LLM
+   - Tag with requirement_id, company_domain, intent, difficulty
+3. User Answer Submission
+4. Evaluation:
+   - Retrieve context for question
+   - Evaluate using AnswerJudge
+   - Determine outcome (Correct/Partial/Incorrect)
+   - Update weakness tracker
+   - Adjust difficulty progression
+5. User Actions (optional):
+   - Request teaching (full, ideal answer, why weak, missed concepts)
+   - Retry question
+   - Ask follow-up
+   - Move to next question
+6. Next Question Generation (repeat from step 2)
+7. Session End:
+   - Generate summary (statistics, weaknesses, recommendations)
+   - Persist session to disk
 ```
 
 ## Extensibility Design
@@ -149,10 +215,12 @@ Query → Rewrite → Dual Retrieval → Merge & Deduplicate → Filter → Answ
 
 ### Adding New Modes
 
-1. Create new mode file in `modes/`
-2. Implement mode interface
-3. Add mode to UI selector
+1. Add new mode configuration to `core/modes.py` (ModeConfig)
+2. Add mode to ModeOrchestrator._get_mode_config()
+3. Add mode to UI selector in `ui/app.py`
 4. System automatically supports new mode
+
+**Note**: All 6 interview modes are currently implemented in `core/modes.py`. The Interview Simulator is a separate system that uses these modes for teaching explanations.
 
 ## Metadata Schema
 
@@ -173,11 +241,12 @@ Query → Rewrite → Dual Retrieval → Merge & Deduplicate → Filter → Answ
 
 ### Vector Store Metadata
 
-Chroma stores:
+Local pickle-based storage (Chroma-compatible interface available):
 - Document text (headline + summary + original_text)
-- Embedding vector
-- Metadata (all fields above)
+- Embedding vector (NumPy array)
+- Metadata (all fields above, stored as JSON)
 - ID (unique identifier)
+- Stored in `data/vector_db/vector_db.pkl` (embeddings) and `data/vector_db/vector_db_metadata.json` (metadata)
 
 ## Performance Considerations
 

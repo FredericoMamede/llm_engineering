@@ -12,6 +12,10 @@
 
 Build an AI Interview Preparation Assistant initially specialized for the **"AI-First MERN Fullstack Developer"** role at Eventyr, but architected to support future roles, companies, and tech stacks without restructuring.
 
+The system provides two main modes:
+- **Q&A Mode**: You ask questions, the system provides grounded answers
+- **Interview Simulator**: The system asks questions, you answer, and receive evaluation with optional teaching
+
 ---
 
 ## 🛡️ Non-Negotiable Principles
@@ -174,9 +178,17 @@ Implement prompt-orchestrated modes:
 
 ## 🔌 Extensibility
 
-- New roles = new corpus
-- New companies = new context docs
-- **No code rewrites required** to scale
+The system is architected for extensibility without code rewrites:
+
+- **Multiple Requirement Sets**: `requirements.yaml` represents a logical requirement set. The system supports multiple sets via metadata isolation. New roles can be added by creating new requirement sets and running ingestion.
+
+- **Multiple Companies**: `company_context.yaml` represents company-specific context. The system supports multiple companies via company domain metadata. New companies can be added by creating new context files and running ingestion.
+
+- **Requirement Isolation**: Each chunk is tagged with `requirement_id` and `company_domain`, allowing the system to filter and reason over specific requirement sets and company contexts.
+
+- **UI Expansion**: The current UI exposes one requirement set (Eventyr's AI-First MERN Fullstack Developer role). The architecture is ready for multi-company/multi-role UI expansion, though this is not yet implemented.
+
+**Note**: Requirement sets and company contexts are logical groupings managed through configuration and metadata. The system already supports multiple sets in the knowledge base; UI-level selection is designed for extensibility but not yet implemented.
 
 ---
 
@@ -192,7 +204,8 @@ ai_interview_assistant/
 │   ├── vector_store.py         # Vector store abstraction (local/Chroma)
 │   ├── retriever.py            # Knowledge retrieval with query rewriting
 │   ├── answer_generator.py     # Strict answer generation
-│   └── modes.py                # Interview mode orchestration
+│   ├── modes.py                # Interview mode orchestration
+│   └── interview_simulator.py  # Interview Simulator (system-driven questioning)
 │
 ├── ingest/                      # Data ingestion pipeline
 │   ├── __init__.py
@@ -220,6 +233,7 @@ ai_interview_assistant/
 │   ├── chunks/                 # Processed semantic chunks (JSON)
 │   ├── vector_db/              # Vector database (pickle + JSON metadata)
 │   ├── sessions/               # Drill mode session data (JSON)
+│   ├── interview_sessions/     # Interview Simulator session data (JSON)
 │   └── weaknesses.json         # Tracked weaknesses (JSON)
 │
 └── docs/                       # Documentation
@@ -277,8 +291,9 @@ Access at: `http://localhost:7860`
 - ✅ Retrieval pipeline with query rewriting
 - ✅ Strict answer generation with grounding
 - ✅ 6 interview modes (Explain, Interviewer, Evaluation, Company-Aware, System Design, Rapid Fire)
+- ✅ Interview Simulator (system-driven questioning with adaptive difficulty)
 - ✅ LLM-as-a-judge evaluation
-- ✅ Gradio UI with transparency features
+- ✅ Gradio UI with multiple tabs (Q&A Mode and Interview Simulator)
 - ✅ Drill mode for iterative practice
 - ✅ Weakness tracking with persistence
 
@@ -300,12 +315,15 @@ Access at: `http://localhost:7860`
 - **Strict Grounding**: All answers traceable to retrieved chunks
 - **Refusal Behavior**: System refuses when context is insufficient
 - **Transparency**: Full visibility into retrieval, citations, and confidence
+- **Interview Simulator**: System asks questions, evaluates answers, teaches on demand
+- **Adaptive Difficulty**: Simulator adjusts difficulty based on performance
 - **Drill Mode**: Track conversation history for iterative practice
 - **Weakness Tracking**: Automatically tracks missed concepts from evaluations
 - **Debug Mode**: View similarity scores and retrieval metadata
 
-### Usage Example
+### Usage Examples
 
+**Q&A Mode:**
 1. Enter an interview question (e.g., "How does TypeScript help with large-scale development?")
 2. Select an interview mode
 3. Optionally provide your answer for evaluation
@@ -313,6 +331,15 @@ Access at: `http://localhost:7860`
 5. View the grounded answer with citations
 6. Review evaluation feedback (if candidate answer provided)
 7. Check tracked weaknesses in the accordion panel
+
+**Interview Simulator:**
+1. Configure session (company, difficulty, focus areas)
+2. Start session - system generates first question
+3. Answer the question
+4. Receive evaluation (strengths, gaps, missed concepts)
+5. Request teaching if needed (full explanation, ideal answer, why weak, missed concepts)
+6. Continue to next question or end session
+7. Review session summary with progress and recommendations
 
 ---
 
