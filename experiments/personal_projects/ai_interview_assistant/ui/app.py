@@ -12,6 +12,7 @@ import gradio as gr
 try:
     from core.modes import ModeOrchestrator, InterviewMode
     from evaluation.judge import AnswerJudge
+    from core.interview_simulator import InterviewSimulator, Difficulty, Outcome
     from .drill_mode import DrillModeManager
     from .weakness_tracker import WeaknessTracker
 except ImportError:
@@ -21,6 +22,7 @@ except ImportError:
         sys.path.insert(0, str(project_root))
     from core.modes import ModeOrchestrator, InterviewMode
     from evaluation.judge import AnswerJudge
+    from core.interview_simulator import InterviewSimulator, Difficulty, Outcome
     from ui.drill_mode import DrillModeManager
     from ui.weakness_tracker import WeaknessTracker
 
@@ -33,6 +35,7 @@ orchestrator = ModeOrchestrator(vector_db_dir=VECTOR_DB_DIR, backend="local")
 judge = AnswerJudge()
 drill_manager = DrillModeManager()
 weakness_tracker = WeaknessTracker()
+simulator = InterviewSimulator(vector_db_dir=VECTOR_DB_DIR, backend="local")
 
 
 def format_cited_chunks(cited_chunks) -> str:
@@ -352,6 +355,507 @@ def process_question(
         )
 
 
+def create_interview_simulator_ui():
+    """Create the Interview Simulator UI tab."""
+    
+    with gr.Column():
+        gr.Markdown("""
+        ## Interview Simulator
+        
+        The system asks questions, you answer, and we evaluate. Teaching is available on demand only.
+        All questions are grounded in the knowledge base.
+        """)
+        
+        # Session Configuration
+        with gr.Accordion("Session Configuration", open=True):
+            with gr.Row():
+                company_input = gr.Textbox(
+                    label="Company",
+                    value="Eventyr",
+                    interactive=True
+                )
+                requirement_set_input = gr.Textbox(
+                    label="Requirement Set",
+                    value="ai-first-mern-fullstack",
+                    interactive=True
+                )
+            
+            with gr.Row():
+                difficulty_dropdown = gr.Dropdown(
+                    choices=["easy", "medium", "hard"],
+                    value="medium",
+                    label="Target Difficulty",
+                    interactive=True
+                )
+                session_length_input = gr.Number(
+                    label="Max Questions (optional)",
+                    value=None,
+                    interactive=True,
+                    precision=0
+                )
+            
+            focus_areas_input = gr.Textbox(
+                label="Focus Areas (comma-separated, optional)",
+                placeholder="e.g., TypeScript, React, PostgreSQL",
+                interactive=True
+            )
+            
+            with gr.Row():
+                start_session_btn = gr.Button("Start Session", variant="primary")
+                end_session_btn = gr.Button("End Session", variant="stop")
+        
+        # Current Question Panel
+        with gr.Group():
+            gr.Markdown("### Current Question")
+            question_display = gr.Markdown(
+                value="**No active question. Start a session to begin.**",
+                label="Question"
+            )
+            
+            with gr.Row():
+                requirement_tag = gr.Textbox(
+                    label="Requirement/Domain",
+                    interactive=False,
+                    visible=False
+                )
+                difficulty_tag = gr.Textbox(
+                    label="Difficulty",
+                    interactive=False
+                )
+        
+        # Answer Input
+        with gr.Group():
+            gr.Markdown("### Your Answer")
+            answer_input = gr.Textbox(
+                label="Answer",
+                placeholder="Enter your answer here...",
+                lines=5,
+                interactive=True
+            )
+            submit_answer_btn = gr.Button("Submit Answer", variant="primary")
+        
+        # Evaluation Panel
+        with gr.Accordion("Evaluation", open=True):
+            evaluation_status = gr.Markdown(
+                value="**No evaluation yet. Submit an answer to see feedback.**",
+                label="Status"
+            )
+            
+            with gr.Row():
+                with gr.Column():
+                    eval_strengths = gr.Markdown(label="Strengths")
+                    eval_gaps = gr.Markdown(label="Gaps")
+                with gr.Column():
+                    eval_missed = gr.Markdown(label="Missed Concepts")
+                    eval_followup = gr.Markdown(label="Follow-up Questions")
+            
+            eval_overall = gr.Markdown(label="Overall Assessment")
+            eval_outcome = gr.Textbox(
+                label="Outcome",
+                interactive=False
+            )
+        
+        # Teaching Panel (conditional)
+        with gr.Accordion("Teaching (On Demand)", open=False):
+            teaching_display = gr.Markdown(
+                value="**Teaching content will appear here when requested.**",
+                label="Explanation"
+            )
+            
+            with gr.Row():
+                teach_full_btn = gr.Button("Teach Me (Full Explanation)", variant="secondary")
+                teach_ideal_btn = gr.Button("Show Ideal Answer", variant="secondary")
+                teach_why_weak_btn = gr.Button("Why Was My Answer Weak?", variant="secondary")
+                teach_missed_btn = gr.Button("Explain Missed Concepts", variant="secondary")
+        
+        # Control Panel
+        with gr.Group():
+            gr.Markdown("### Actions")
+            with gr.Row():
+                next_question_btn = gr.Button("Next Question", variant="primary")
+                retry_question_btn = gr.Button("Retry Question", variant="secondary")
+                followup_question_btn = gr.Button("Ask Follow-up", variant="secondary")
+                move_on_btn = gr.Button("Move On", variant="secondary")
+        
+        # Progress Panel
+        with gr.Accordion("Progress", open=False):
+            progress_display = gr.Markdown(
+                value="**No progress data yet.**",
+                label="Session Progress"
+            )
+        
+        # Session Summary (when ended)
+        session_summary_display = gr.Markdown(
+            value="",
+            label="Session Summary",
+            visible=False
+        )
+        
+        # State management
+        session_state_var = gr.State(value=None)
+        
+        def update_progress(session_state):
+            """Update progress display."""
+            if not session_state:
+                return gr.update(value="**No active session.**")
+            
+            try:
+                session = simulator.current_session
+                if not session:
+                    return gr.update(value="**No active session.**")
+                
+                total_q = len(session.questions_asked)
+                total_a = len(session.answers_given)
+                total_e = len(session.evaluations)
+                
+                correct = sum(1 for e in session.evaluations if e.outcome == Outcome.CORRECT)
+                partial = sum(1 for e in session.evaluations if e.outcome == Outcome.PARTIAL)
+                incorrect = sum(1 for e in session.evaluations if e.outcome == Outcome.INCORRECT)
+                
+                accuracy = (correct / total_e * 100) if total_e > 0 else 0
+                
+                progress_text = f"""
+## Session Progress
+
+**Questions Asked:** {total_q}
+**Answers Given:** {total_a}
+**Evaluations:** {total_e}
+
+### Results
+- ✅ **Correct:** {correct}
+- ⚠️ **Partial:** {partial}
+- ❌ **Incorrect:** {incorrect}
+- **Accuracy:** {accuracy:.1f}%
+
+### Current Status
+- **Difficulty:** {session.current_difficulty.value.upper()}
+- **Consecutive Correct:** {session.consecutive_correct}
+- **Consecutive Incorrect:** {session.consecutive_incorrect}
+
+### Coverage
+- **Requirements Covered:** {len(session.covered_requirements)}
+- **Domains Covered:** {len(session.covered_domains)}
+- **Weaknesses Triggered:** {len(session.weaknesses_triggered)}
+"""
+                return gr.update(value=progress_text)
+            except Exception as e:
+                return gr.update(value=f"**Error: {str(e)}**")
+        
+        def start_session(company, req_set, difficulty, session_length, focus_areas):
+            """Start a new interview session."""
+            try:
+                # Parse focus areas
+                focus_list = [f.strip() for f in focus_areas.split(",") if f.strip()] if focus_areas else []
+                
+                # Parse difficulty
+                diff_enum = Difficulty(difficulty.lower())
+                
+                # Parse session length
+                length = int(session_length) if session_length else None
+                
+                session = simulator.start_session(
+                    company=company,
+                    requirement_set=req_set,
+                    difficulty_target=diff_enum,
+                    focus_areas=focus_list,
+                    session_length=length
+                )
+                
+                # Generate first question
+                question = simulator.generate_question()
+                
+                if question:
+                    return (
+                        gr.update(value=f"**{question.question_text}**"),
+                        gr.update(value=question.requirement_id or question.company_domain or "N/A"),
+                        gr.update(value=question.difficulty.value.upper()),
+                        gr.update(value=""),
+                        gr.update(value="**Session started. Answer the question above.**"),
+                        gr.update(value=""),
+                        gr.update(value=""),
+                        gr.update(value=""),
+                        gr.update(value=""),
+                        gr.update(value=""),
+                        gr.update(value=""),
+                        gr.update(value=""),
+                        session
+                    )
+                else:
+                    return (
+                        gr.update(value="**Error generating question. Please try again.**"),
+                        gr.update(value="N/A"),
+                        gr.update(value="N/A"),
+                        gr.update(value=""),
+                        gr.update(value="**Error: Could not generate question.**"),
+                        gr.update(value=""),
+                        gr.update(value=""),
+                        gr.update(value=""),
+                        gr.update(value=""),
+                        gr.update(value=""),
+                        gr.update(value=""),
+                        gr.update(value=""),
+                        session
+                    )
+            except Exception as e:
+                return (
+                    gr.update(value=f"**Error: {str(e)}**"),
+                    gr.update(value="N/A"),
+                    gr.update(value="N/A"),
+                    gr.update(value=""),
+                    gr.update(value=f"**Error starting session: {str(e)}**"),
+                    gr.update(value=""),
+                    gr.update(value=""),
+                    gr.update(value=""),
+                    gr.update(value=""),
+                    gr.update(value=""),
+                    gr.update(value=""),
+                    gr.update(value=""),
+                    None
+                )
+        
+        def submit_answer(answer_text, session_state):
+            """Submit answer and evaluate."""
+            if not session_state or not answer_text:
+                return (
+                    gr.update(),
+                    gr.update(value="**Please enter an answer.**"),
+                    gr.update(value=""),
+                    gr.update(value=""),
+                    gr.update(value=""),
+                    gr.update(value=""),
+                    gr.update(value=""),
+                    gr.update(value=""),
+                    gr.update(value=""),
+                    session_state
+                )
+            
+            try:
+                evaluation = simulator.submit_answer(answer_text)
+                
+                if not evaluation:
+                    return (
+                        gr.update(),
+                        gr.update(value="**Error: No active question.**"),
+                        gr.update(value=""),
+                        gr.update(value=""),
+                        gr.update(value=""),
+                        gr.update(value=""),
+                        gr.update(value=""),
+                        gr.update(value=""),
+                        gr.update(value=""),
+                        session_state
+                    )
+                
+                # Format evaluation
+                feedback = evaluation.evaluation
+                strengths_text = "\n".join([f"✅ {s}" for s in feedback.strengths]) if feedback.strengths else "*None*"
+                gaps_text = "\n".join([f"⚠️ {g}" for g in feedback.gaps]) if feedback.gaps else "*None*"
+                missed_text = "\n".join([f"❌ {m}" for m in feedback.missed_concepts]) if feedback.missed_concepts else "*None*"
+                followup_text = "\n".join([f"💡 {q}" for q in feedback.followup_questions]) if feedback.followup_questions else "*None*"
+                
+                outcome_text = {
+                    Outcome.CORRECT: "✅ **CORRECT** - Strong answer!",
+                    Outcome.PARTIAL: "⚠️ **PARTIAL** - Some gaps.",
+                    Outcome.INCORRECT: "❌ **INCORRECT** - Needs improvement."
+                }.get(evaluation.outcome, "Unknown")
+                
+                outcome_text += f"\n\n**Confidence Score:** {feedback.confidence_score}/5"
+                
+                return (
+                    gr.update(),
+                    gr.update(value="**Evaluation complete. See details below.**"),
+                    gr.update(value=strengths_text),
+                    gr.update(value=gaps_text),
+                    gr.update(value=missed_text),
+                    gr.update(value=followup_text),
+                    gr.update(value=feedback.overall_assessment),
+                    gr.update(value=outcome_text),
+                    gr.update(value=""),
+                    session_state
+                )
+            except Exception as e:
+                return (
+                    gr.update(),
+                    gr.update(value=f"**Error evaluating answer: {str(e)}**"),
+                    gr.update(value=""),
+                    gr.update(value=""),
+                    gr.update(value=""),
+                    gr.update(value=""),
+                    gr.update(value=""),
+                    gr.update(value=""),
+                    gr.update(value=""),
+                    session_state
+                )
+        
+        def teach_explanation(explanation_type, session_state):
+            """Generate teaching explanation."""
+            if not session_state:
+                return gr.update(value="**No active session.**")
+            
+            try:
+                answer = simulator.teach(explanation_type=explanation_type)
+                if answer and answer.answer_text:
+                    return gr.update(value=answer.answer_text)
+                else:
+                    return gr.update(value="**Could not generate explanation.**")
+            except Exception as e:
+                return gr.update(value=f"**Error: {str(e)}**")
+        
+        def next_question(session_state):
+            """Generate next question."""
+            if not session_state:
+                return (
+                    gr.update(value="**No active session. Start a session first.**"),
+                    gr.update(value="N/A"),
+                    gr.update(value="N/A"),
+                    gr.update(value=""),
+                    gr.update(value="**No active session.**"),
+                    session_state
+                )
+            
+            try:
+                question = simulator.generate_question()
+                if question:
+                    return (
+                        gr.update(value=f"**{question.question_text}**"),
+                        gr.update(value=question.requirement_id or question.company_domain or "N/A"),
+                        gr.update(value=question.difficulty.value.upper()),
+                        gr.update(value=""),
+                        gr.update(value="**New question generated. Answer above.**"),
+                        session_state
+                    )
+                else:
+                    return (
+                        gr.update(value="**Error generating question.**"),
+                        gr.update(value="N/A"),
+                        gr.update(value="N/A"),
+                        gr.update(value=""),
+                        gr.update(value="**Error: Could not generate question.**"),
+                        session_state
+                    )
+            except Exception as e:
+                return (
+                    gr.update(value=f"**Error: {str(e)}**"),
+                    gr.update(value="N/A"),
+                    gr.update(value="N/A"),
+                    gr.update(value=""),
+                    gr.update(value=f"**Error: {str(e)}**"),
+                    session_state
+                )
+        
+        def end_session(session_state):
+            """End session and generate summary."""
+            if not session_state:
+                return (
+                    gr.update(value="**No active session.**"),
+                    gr.update(visible=False)
+                )
+            
+            try:
+                summary = simulator.end_session()
+                if summary:
+                    summary_text = f"""
+## Session Summary
+
+**Session ID:** {summary['session_id']}
+**Started:** {summary['started_at']}
+**Ended:** {summary['ended_at']}
+
+### Statistics
+- **Total Questions:** {summary['total_questions']}
+- **Total Answers:** {summary['total_answers']}
+- **Accuracy:** {summary['accuracy']}%
+- **Correct:** {summary['correct']}
+- **Partial:** {summary['partial']}
+- **Incorrect:** {summary['incorrect']}
+- **Final Difficulty:** {summary['final_difficulty']}
+
+### Top Weaknesses
+{chr(10).join([f"- {w}" for w in summary['top_weaknesses'][:5]])}
+
+### Recommendations
+{chr(10).join([f"- {r}" for r in summary['recommendations']])}
+"""
+                    return (
+                        gr.update(value=summary_text),
+                        gr.update(visible=True)
+                    )
+                else:
+                    return (
+                        gr.update(value="**Error generating summary.**"),
+                        gr.update(visible=True)
+                    )
+            except Exception as e:
+                return (
+                    gr.update(value=f"**Error: {str(e)}**"),
+                    gr.update(visible=True)
+                )
+        
+        # Event handlers
+        start_session_btn.click(
+            fn=start_session,
+            inputs=[company_input, requirement_set_input, difficulty_dropdown, session_length_input, focus_areas_input],
+            outputs=[
+                question_display, requirement_tag, difficulty_tag, answer_input,
+                evaluation_status, eval_strengths, eval_gaps, eval_missed, eval_followup,
+                eval_overall, eval_outcome, session_state_var
+            ]
+        )
+        
+        submit_answer_btn.click(
+            fn=submit_answer,
+            inputs=[answer_input, session_state_var],
+            outputs=[
+                answer_input, evaluation_status, eval_strengths, eval_gaps, eval_missed,
+                eval_followup, eval_overall, eval_outcome, teaching_display, session_state_var
+            ]
+        ).then(
+            fn=update_progress,
+            inputs=[session_state_var],
+            outputs=[progress_display]
+        )
+        
+        teach_full_btn.click(
+            fn=lambda s: teach_explanation("full", s),
+            inputs=[session_state_var],
+            outputs=[teaching_display]
+        )
+        
+        teach_ideal_btn.click(
+            fn=lambda s: teach_explanation("ideal_answer", s),
+            inputs=[session_state_var],
+            outputs=[teaching_display]
+        )
+        
+        teach_why_weak_btn.click(
+            fn=lambda s: teach_explanation("why_weak", s),
+            inputs=[session_state_var],
+            outputs=[teaching_display]
+        )
+        
+        teach_missed_btn.click(
+            fn=lambda s: teach_explanation("missed_concepts", s),
+            inputs=[session_state_var],
+            outputs=[teaching_display]
+        )
+        
+        next_question_btn.click(
+            fn=next_question,
+            inputs=[session_state_var],
+            outputs=[question_display, requirement_tag, difficulty_tag, answer_input, evaluation_status, session_state_var]
+        ).then(
+            fn=update_progress,
+            inputs=[session_state_var],
+            outputs=[progress_display]
+        )
+        
+        end_session_btn.click(
+            fn=end_session,
+            inputs=[session_state_var],
+            outputs=[session_summary_display, session_summary_display]
+        )
+
+
 def create_ui():
     """Create and return the Gradio interface."""
     
@@ -373,154 +877,162 @@ def create_ui():
         All answers are strictly grounded in the knowledge base - no hallucinations.
         """)
         
-        with gr.Row():
-            with gr.Column(scale=2):
-                # Inputs
-                question_input = gr.Textbox(
-                    label="Interview Question",
-                    placeholder="e.g., How does TypeScript help with large-scale development?",
-                    lines=3
-                )
-                
-                mode_dropdown = gr.Dropdown(
-                    choices=[opt[1] for opt in mode_options],
-                    value=InterviewMode.EXPLAIN.value,
-                    label="Interview Mode",
-                    info="Select the interview mode for different behaviors"
-                )
-                
-                candidate_answer_input = gr.Textbox(
-                    label="Your Answer (Optional - for evaluation)",
-                    placeholder="Enter your answer here to get feedback...",
-                    lines=5,
-                    visible=True
-                )
-                
+        # Create tabs
+        with gr.Tabs() as tabs:
+            # Q&A Tab (existing functionality)
+            with gr.Tab("Q&A Mode"):
                 with gr.Row():
-                    debug_checkbox = gr.Checkbox(
-                        label="Debug Mode",
-                        value=False,
-                        info="Show similarity scores and retrieval metadata"
-                    )
-                    
-                    drill_mode_checkbox = gr.Checkbox(
-                        label="Drill Mode",
-                        value=False,
-                        info="Track conversation history for iterative practice"
-                    )
-                
-                submit_btn = gr.Button("Ask Question", variant="primary")
-            
-            with gr.Column(scale=3):
-                # Answer Output
-                with gr.Group():
-                    gr.Markdown("### Generated Answer")
-                    answer_output = gr.Markdown(label="Answer")
-                    
-                    with gr.Row():
-                        confidence_output = gr.Textbox(
-                            label="Confidence Level",
-                            interactive=False
+                    with gr.Column(scale=2):
+                        # Inputs
+                        question_input = gr.Textbox(
+                            label="Interview Question",
+                            placeholder="e.g., How does TypeScript help with large-scale development?",
+                            lines=3
                         )
-                        refusal_output = gr.Textbox(
-                            label="Refusal Reason (if applicable)",
-                            interactive=False,
+                        
+                        mode_dropdown = gr.Dropdown(
+                            choices=[opt[1] for opt in mode_options],
+                            value=InterviewMode.EXPLAIN.value,
+                            label="Interview Mode",
+                            info="Select the interview mode for different behaviors"
+                        )
+                        
+                        candidate_answer_input = gr.Textbox(
+                            label="Your Answer (Optional - for evaluation)",
+                            placeholder="Enter your answer here to get feedback...",
+                            lines=5,
                             visible=True
                         )
+                        
+                        with gr.Row():
+                            debug_checkbox = gr.Checkbox(
+                                label="Debug Mode",
+                                value=False,
+                                info="Show similarity scores and retrieval metadata"
+                            )
+                            
+                            drill_mode_checkbox = gr.Checkbox(
+                                label="Drill Mode",
+                                value=False,
+                                info="Track conversation history for iterative practice"
+                            )
+                        
+                        submit_btn = gr.Button("Ask Question", variant="primary")
                     
-                    cited_chunks_output = gr.Markdown(
-                        label="Cited Chunks",
-                        visible=True
-                    )
-        
-        # Retrieved Context Panel
-        with gr.Accordion("Retrieved Context", open=False):
-            retrieved_context_output = gr.Markdown(label="Retrieved Chunks")
-        
-        # Debug Panel
-        with gr.Accordion("Debug Information", open=False):
-            retrieval_metadata_output = gr.Markdown(label="Retrieval Metadata")
-        
-        # Evaluation Panel
-        with gr.Accordion("Answer Evaluation (if candidate answer provided)", open=False):
-            with gr.Row():
-                with gr.Column():
-                    strengths_output = gr.Markdown(label="Strengths")
-                    gaps_output = gr.Markdown(label="Gaps")
-                with gr.Column():
-                    missed_concepts_output = gr.Markdown(label="Missed Concepts")
-                    followup_questions_output = gr.Markdown(label="Follow-up Questions")
+                    with gr.Column(scale=3):
+                        # Answer Output
+                        with gr.Group():
+                            gr.Markdown("### Generated Answer")
+                            answer_output = gr.Markdown(label="Answer")
+                            
+                            with gr.Row():
+                                confidence_output = gr.Textbox(
+                                    label="Confidence Level",
+                                    interactive=False
+                                )
+                                refusal_output = gr.Textbox(
+                                    label="Refusal Reason (if applicable)",
+                                    interactive=False,
+                                    visible=True
+                                )
+                            
+                            cited_chunks_output = gr.Markdown(
+                                label="Cited Chunks",
+                                visible=True
+                            )
+                
+                # Retrieved Context Panel
+                with gr.Accordion("Retrieved Context", open=False):
+                    retrieved_context_output = gr.Markdown(label="Retrieved Chunks")
+                
+                # Debug Panel
+                with gr.Accordion("Debug Information", open=False):
+                    retrieval_metadata_output = gr.Markdown(label="Retrieval Metadata")
+                
+                # Evaluation Panel
+                with gr.Accordion("Answer Evaluation (if candidate answer provided)", open=False):
+                    with gr.Row():
+                        with gr.Column():
+                            strengths_output = gr.Markdown(label="Strengths")
+                            gaps_output = gr.Markdown(label="Gaps")
+                        with gr.Column():
+                            missed_concepts_output = gr.Markdown(label="Missed Concepts")
+                            followup_questions_output = gr.Markdown(label="Follow-up Questions")
+                    
+                    overall_assessment_output = gr.Markdown(label="Overall Assessment")
+                
+                # Drill Mode Context Panel
+                drill_context_output = gr.Markdown(
+                    label="Drill Mode Context",
+                    visible=False
+                )
+                
+                # Weakness Tracking Panel
+                with gr.Accordion("Tracked Weaknesses", open=False):
+                    weakness_summary_output = gr.Markdown(label="Weakness Summary")
+                    refresh_weaknesses_btn = gr.Button("Refresh Weaknesses", variant="secondary")
+                
+                def refresh_weaknesses():
+                    """Refresh weakness summary."""
+                    return weakness_tracker.get_weakness_summary()
+                
+                def toggle_drill_mode(enable: bool):
+                    """Toggle drill mode and start/end session."""
+                    if enable:
+                        drill_manager.start_session()
+                        return gr.update(visible=True)
+                    else:
+                        drill_manager.end_session()
+                        return gr.update(visible=False)
+                
+                # Event handlers
+                submit_btn.click(
+                    fn=process_question,
+                    inputs=[question_input, mode_dropdown, candidate_answer_input, debug_checkbox, drill_mode_checkbox],
+                    outputs=[
+                        answer_output,
+                        confidence_output,
+                        cited_chunks_output,
+                        refusal_output,
+                        retrieved_context_output,
+                        retrieval_metadata_output,
+                        strengths_output,
+                        gaps_output,
+                        missed_concepts_output,
+                        followup_questions_output,
+                        overall_assessment_output,
+                        drill_context_output
+                    ]
+                )
+                
+                drill_mode_checkbox.change(
+                    fn=toggle_drill_mode,
+                    inputs=[drill_mode_checkbox],
+                    outputs=[drill_context_output]
+                )
+                
+                refresh_weaknesses_btn.click(
+                    fn=refresh_weaknesses,
+                    outputs=[weakness_summary_output]
+                )
+                
+                # Load initial weakness summary
+                weakness_summary_output.value = weakness_tracker.get_weakness_summary()
+                
+                # Example questions
+                gr.Markdown("""
+                ### Example Questions
+                
+                - "What is TypeScript and why is it useful?"
+                - "How does React handle state management?"
+                - "Explain PostgreSQL JSONB capabilities"
+                - "What are the tradeoffs of using Redis for caching?"
+                - "How would you design a high-throughput chat system?"
+                """)
             
-            overall_assessment_output = gr.Markdown(label="Overall Assessment")
-        
-        # Drill Mode Context Panel
-        drill_context_output = gr.Markdown(
-            label="Drill Mode Context",
-            visible=False
-        )
-        
-        # Weakness Tracking Panel
-        with gr.Accordion("Tracked Weaknesses", open=False):
-            weakness_summary_output = gr.Markdown(label="Weakness Summary")
-            refresh_weaknesses_btn = gr.Button("Refresh Weaknesses", variant="secondary")
-        
-        def refresh_weaknesses():
-            """Refresh weakness summary."""
-            return weakness_tracker.get_weakness_summary()
-        
-        def toggle_drill_mode(enable: bool):
-            """Toggle drill mode and start/end session."""
-            if enable:
-                drill_manager.start_session()
-                return gr.update(visible=True)
-            else:
-                drill_manager.end_session()
-                return gr.update(visible=False)
-        
-        # Event handlers
-        submit_btn.click(
-            fn=process_question,
-            inputs=[question_input, mode_dropdown, candidate_answer_input, debug_checkbox, drill_mode_checkbox],
-            outputs=[
-                answer_output,
-                confidence_output,
-                cited_chunks_output,
-                refusal_output,
-                retrieved_context_output,
-                retrieval_metadata_output,
-                strengths_output,
-                gaps_output,
-                missed_concepts_output,
-                followup_questions_output,
-                overall_assessment_output,
-                drill_context_output
-            ]
-        )
-        
-        drill_mode_checkbox.change(
-            fn=toggle_drill_mode,
-            inputs=[drill_mode_checkbox],
-            outputs=[drill_context_output]
-        )
-        
-        refresh_weaknesses_btn.click(
-            fn=refresh_weaknesses,
-            outputs=[weakness_summary_output]
-        )
-        
-        # Load initial weakness summary
-        weakness_summary_output.value = weakness_tracker.get_weakness_summary()
-        
-        # Example questions
-        gr.Markdown("""
-        ### Example Questions
-        
-        - "What is TypeScript and why is it useful?"
-        - "How does React handle state management?"
-        - "Explain PostgreSQL JSONB capabilities"
-        - "What are the tradeoffs of using Redis for caching?"
-        - "How would you design a high-throughput chat system?"
-        """)
+            # Interview Simulator Tab
+            with gr.Tab("Interview Simulator"):
+                create_interview_simulator_ui()
     
     return app
 
