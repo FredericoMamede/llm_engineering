@@ -4,6 +4,48 @@
 
 ## Current Phase: ✅ **Complete** - System Functional
 
+### Phase 4.3: Chunking & Retrieval Ranking Refinement (Completed - Reverted)
+
+**Objective**: Improve retrieval ranking quality (MRR, nDCG) by refining chunking and retrieval signals, without changing embeddings, models, or evaluation logic.
+
+**Baseline**: Phase 4.2 evaluation metrics (45 test cases, stable and trustworthy)
+
+**Refinement 1: Dual-Retrieval Boost** ❌ (Reverted)
+- **Change**: Chunks retrieved by both original and rewritten queries received a 15% similarity score boost
+- **Rationale**: Dual retrieval as a signal of relevance - if both query variants retrieve the same chunk, it's likely highly relevant
+- **Result**: Neutral retrieval impact - no measurable improvement in MRR or nDCG
+- **Status**: Reverted - dual retrieval boost did not improve ranking quality
+
+**Refinement 2: Chunk-Type-Aware Ranking Penalties** ❌ (Reverted)
+- **Change**: Applied small multiplicative penalties to over-used chunk types during final ranking
+  - `primary` chunks: 0.90 penalty (10% reduction)
+  - `tradeoff` chunks: 0.88 penalty (12% reduction)
+- **Motivation**: RAG Evaluation Dashboard evidence showed severe over-use:
+  - `primary` chunks ≈ 6x expected usage
+  - `tradeoff` chunks ≈ 8x expected usage
+  - Generic chunks dominated rankings, hurting MRR for specific concepts
+  - Weakest requirements (req_8, req_9, req_10) showed near-zero MRR and coverage
+- **Result**: Mixed impact - some improvement in chunk type diversity but insufficient improvement in MRR and weakest-requirement coverage
+- **Status**: Reverted - ranking heuristics were not the primary bottleneck
+
+**Conclusion**:
+Phase 4.3 tested two ranking refinement approaches:
+1. Dual-retrieval boosting (neutral impact)
+2. Chunk-type penalties (mixed impact, insufficient improvement)
+
+**Key Findings**:
+- Ranking heuristics alone did not address the core issue: weakest requirements show near-zero coverage and MRR
+- The problem is not ranking noise but fundamental data quality and coverage gaps
+- Simple similarity-based ranking (Phase 4.2 baseline) remains the most appropriate approach
+
+**Decision**: All Phase 4.3 refinements have been reverted. Retrieval ranking is now restored to Phase 4.2 baseline behavior (pure similarity-based ranking, no heuristic adjustments).
+
+**Next Phase**: Phase 4.4 will focus on data quality and coverage improvements rather than ranking heuristics.
+
+---
+
+## Previous Phase: ✅ **Complete** - System Functional
+
 ### Phase 4.1: Embedding Model Alignment Experiment (Completed - Reverted)
 
 **Objective**: Evaluate the impact of embedding model choice on RAG retrieval quality.

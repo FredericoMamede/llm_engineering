@@ -177,6 +177,7 @@ Implement prompt-orchestrated modes:
 - **Evaluation Dashboard**: Read-only UI tab for visualizing results
 - **Analysis layer**: Pure analysis functions for diagnostic reports
 - Evaluations are **offline by design** - run explicitly, not automatically
+- **Evaluation-driven iteration**: The system includes documented experiments and reversions (e.g., Phase 4.1 embedding experiment, Phase 4.3 ranking refinements), emphasizing correctness and measurement over blind optimization
 
 ---
 

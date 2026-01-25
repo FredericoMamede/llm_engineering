@@ -51,11 +51,16 @@ Query → Rewrite → Dual Retrieval → Merge & Deduplicate → Filter → Answ
 **Key Features:**
 - Query rewriting for better retrieval (optional)
 - Dual retrieval (original + rewritten queries)
+- Merge and deduplication by chunk_id
+- **Simple similarity-based ranking**: Results are ranked purely by cosine similarity scores (no heuristic adjustments)
 - Metadata-aware filtering
 - Configurable top-K and final-K
 - Strict context injection (no free generation)
 - Refusal behavior when context insufficient
 - Interview mode-specific configurations
+
+**Ranking Design Decision:**
+Retrieval ranking is intentionally simple and similarity-based. Phase 4.3 tested heuristic ranking approaches (dual-retrieval boosting, chunk-type penalties) but evaluation showed these did not meaningfully improve MRR or nDCG. The current implementation prioritizes transparency and evaluation-driven iteration over complex ranking heuristics.
 
 ### 3. Mode Layer
 
