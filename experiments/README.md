@@ -49,21 +49,29 @@ A comprehensive prompt engineering platform that generates, evaluates, and refin
 ### AI Interview Preparation Assistant
 **Location:** `experiments/personal_projects/ai_interview_assistant/`
 
-**Status:** 🚧 **In Development**
+**Status:** ✅ **Complete (Frozen – Evaluation-Driven RAG System)**
 
 **Description:**
-A production-grade RAG system that functions as an Expert Knowledge Worker for technical interview preparation. Initially specialized for the "AI-First MERN Fullstack Developer" role at Eventyr, but architected to support future roles, companies, and tech stacks without restructuring.
+A production-grade RAG system that functions as an Expert Knowledge Worker for technical interview preparation. Built with evaluation-first development methodology, the system was intentionally frozen after rigorous evaluation and tuning (Phase 5 deterministic retrieval intelligence). Initially specialized for the "AI-First MERN Fullstack Developer" role at Eventyr, but architected to support future roles, companies, and tech stacks without restructuring. The project is complete and intentionally paused, not abandoned—serving as a reference implementation for evaluation-driven RAG systems.
 
 **Key Features:**
 - ✅ **No Hallucinations** - All answers grounded in retrieved documents
 - ✅ **22 Requirement Coverage** - Complete knowledge domain mapping for all job requirements
 - ✅ **Company Context Integration** - Eventyr-specific framing and constraints
-- ✅ **Advanced RAG Pipeline** - Query rewriting, dual retrieval, LLM-based re-ranking
+- ✅ **Advanced RAG Pipeline** - Query rewriting, dual retrieval, deterministic score adjustments
 - ✅ **6 Assistant Modes** - Explain, Interviewer, Evaluation, Company-Aware, System Design, Rapid Fire
 - ✅ **LLM-as-a-Judge Evaluation** - Structured scoring (accuracy, depth, relevance, confidence)
 - ✅ **Source Freshness Validation** - Prefer sources < 24 months, mark historical context
 - ✅ **Strict Context Injection** - Refuse to answer if insufficient context retrieved
 - ✅ **Interview Calibration** - Senior engineer/hiring manager level, emphasis on tradeoffs
+
+**Evaluation & Retrieval Intelligence:**
+- ✅ **Offline RAG Evaluation Harness** - Comprehensive metrics (MRR, nDCG@10, Recall@10, Concept Coverage)
+- ✅ **Requirement-Level Weakness Analysis** - Identifies weakest requirements for targeted improvement
+- ✅ **Deterministic Retrieval Intelligence (Phase 5)** - Score-based adjustments without LLM decision logic
+- ✅ **Transparent, Logged Score Adjustments** - All adaptive behavior logged in retrieval metadata
+- ✅ **Regression Detection & Comparison UI** - Read-only dashboard for comparing evaluation runs
+- ✅ **Intentional System Freeze** - Frozen after metric convergence to prevent overfitting
 
 **Technologies:**
 - Python, Pydantic, ChromaDB
@@ -73,16 +81,29 @@ A production-grade RAG system that functions as an Expert Knowledge Worker for t
 - YAML configuration
 
 **Architecture:**
-- Data ingestion: Source discovery → Normalization → Semantic chunking → Embedding → Vector store
-- RAG pipeline: Query rewriting → Dual retrieval → Re-ranking → Context validation → Answer generation
-- Mode system: Prompt-orchestrated modes with consistent interface
-- Evaluation: LLM-as-a-judge with structured scoring and feedback
+- **Data Ingestion Layer**: Source discovery → Normalization → Semantic chunking → Embedding → Vector store
+- **RAG Pipeline**: Query rewriting → Dual retrieval → Deterministic score adjustments → Context validation → Answer generation
+- **Mode System**: Prompt-orchestrated modes with consistent interface
+- **Offline Evaluation Layer**: Test case management, retrieval metrics, answer evaluation, aggregation
+- **Read-only RAG Evaluation Dashboard**: UI for viewing evaluation runs, comparing baselines, analyzing weaknesses
+- **Deterministic Retrieval Intelligence (Phase 5)**: Requirement-aware boosting, failure-mode sensitivity, confidence-based depth adjustment (all score-based, no LLM decision logic)
+- **Runtime Evaluation**: LLM-as-a-judge with structured scoring and feedback
+
+**Project Status & Rationale:**
+The system reached metric convergence after Phase 5 deterministic retrieval intelligence tuning. Further tuning risked overfitting to the evaluation set without meaningful gains. The project was intentionally frozen to preserve stability and serve as a reference implementation for:
+- **Evaluation-driven RAG development** - Systematic measurement and iteration
+- **Deterministic retrieval refinement** - Score-based adaptations without black-box logic
+- **Interview-grade AI systems** - Production-ready patterns for knowledge work
+
+This decision reflects senior engineering judgment: stopping at the right time is as important as building the right features. The system is complete, evaluated, and ready for long-term use.
 
 **Notable:**
 - Production-grade RAG patterns from Week 5
 - Extensible design (new roles/companies without code rewrites)
 - Coverage guarantee: 5+ chunks per requirement with specific types
 - Interview-focused calibration (senior engineer level, tradeoff emphasis)
+- Content-hash-based chunk IDs for correct incremental ingestion
+- Fully documented evaluation methodology and results
 
 ---
 
@@ -325,7 +346,7 @@ Extends code conversion to Rust, adds advanced benchmarking, and creates an enha
 
 ### Personal Projects (2)
 1. **Master Prompt Generator** - Production-ready prompt engineering platform
-2. **AI Interview Preparation Assistant** - Production-grade RAG system for technical interview prep (in development)
+2. **AI Interview Preparation Assistant** - Production-grade RAG system for technical interview prep (complete, frozen)
 
 ### Mini-Projects (3)
 1. **Week 1: LLM Playground** - Multi-step LLM workflows and model comparison
@@ -370,8 +391,8 @@ Extends code conversion to Rust, adds advanced benchmarking, and creates an enha
 ## 📈 Project Statistics
 
 - **Total Projects:** 9
-- **Production-Ready:** 2 (Master Prompt Generator, AI Knowledge Assistant)
-- **In Progress:** 2 (Meeting Intelligence Extractor, AI Interview Preparation Assistant)
+- **Production-Ready:** 3 (Master Prompt Generator, AI Knowledge Assistant, AI Interview Preparation Assistant)
+- **In Progress:** 1 (Meeting Intelligence Extractor)
 - **Complete Experiments:** 5
 
 All projects demonstrate practical LLM engineering patterns, from simple workflows to production-ready systems with security, monitoring, and scalability considerations.
