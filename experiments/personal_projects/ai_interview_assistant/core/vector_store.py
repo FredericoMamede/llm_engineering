@@ -3,25 +3,15 @@ Vector store abstraction for retrieval.
 
 This module provides a backend-agnostic interface for vector similarity search,
 supporting both Chroma and local pickle-based storage.
-
-Phase 4.1 Experiment: Using OpenAI embeddings (text-embedding-3-small)
-for query encoding to match the embedding model used during ingestion.
 """
 
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional
 import json
 import pickle
-import os
 import numpy as np
 from pathlib import Path
-from dotenv import load_dotenv
-
-load_dotenv(override=True)
-
-# Phase 4.1: Match embedding model used in embedder.py
-EMBEDDING_MODEL = "text-embedding-3-small"  # Changed from "all-MiniLM-L6-v2"
-USE_OPENAI_EMBEDDINGS = True  # Flag to use OpenAI embeddings
+from sentence_transformers import SentenceTransformer
 
 # Use numpy for cosine similarity to avoid sklearn dependency
 def cosine_similarity_numpy(query_vec, candidate_vecs):
@@ -65,20 +55,17 @@ class VectorStore(ABC):
 class LocalVectorStore(VectorStore):
     """Local pickle-based vector store implementation."""
     
-    def __init__(self, vector_db_dir: Path, embedding_model_name: Optional[str] = None):
+    def __init__(self, vector_db_dir: Path, embedding_model_name: str = "all-MiniLM-L6-v2"):
         """
         Initialize local vector store.
         
         Args:
             vector_db_dir: Directory containing vector_db.pkl and vector_db_metadata.json
-            embedding_model_name: Name of the embedding model (defaults to EMBEDDING_MODEL constant)
+            embedding_model_name: Name of the embedding model to use
         """
         self.vector_db_dir = vector_db_dir
         self.vector_db_path = vector_db_dir / "vector_db.pkl"
         self.metadata_path = vector_db_dir / "vector_db_metadata.json"
-        
-        # Use provided model name or default from constant
-        self.embedding_model_name = embedding_model_name or EMBEDDING_MODEL
         
         # Load embeddings and metadata
         self.embeddings = []
@@ -87,17 +74,7 @@ class LocalVectorStore(VectorStore):
         self._load()
         
         # Initialize embedding model for query encoding
-        if USE_OPENAI_EMBEDDINGS:
-            from openai import OpenAI
-            api_key = os.getenv("OPENAI_API_KEY")
-            if not api_key:
-                raise ValueError("OPENAI_API_KEY environment variable is required for OpenAI embeddings")
-            self.openai_client = OpenAI(api_key=api_key)
-            self.embedding_model = None  # Not used for OpenAI
-        else:
-            from sentence_transformers import SentenceTransformer
-            self.embedding_model = SentenceTransformer(self.embedding_model_name)
-            self.openai_client = None
+        self.embedding_model = SentenceTransformer(embedding_model_name)
     
     def _load(self):
         """Load embeddings and metadata from disk."""
@@ -149,30 +126,6 @@ class LocalVectorStore(VectorStore):
         
         return matching_indices
     
-    def _encode_query(self, query: str) -> np.ndarray:
-        """
-        Encode query text to embedding vector.
-        
-        Args:
-            query: Query text string
-            
-        Returns:
-            Numpy array of shape (1, embedding_dim)
-        """
-        if USE_OPENAI_EMBEDDINGS:
-            try:
-                response = self.openai_client.embeddings.create(
-                    model=self.embedding_model_name,
-                    input=[query]
-                )
-                embedding = np.array(response.data[0].embedding)
-                return embedding.reshape(1, -1)
-            except Exception as e:
-                raise ValueError(f"Error encoding query with OpenAI: {e}")
-        else:
-            query_embedding = self.embedding_model.encode([query], show_progress_bar=False)
-            return query_embedding.reshape(1, -1)
-    
     def search(
         self,
         query: str,
@@ -181,7 +134,8 @@ class LocalVectorStore(VectorStore):
     ) -> List[Dict[str, Any]]:
         """Search for similar vectors using cosine similarity."""
         # Encode query
-        query_embedding = self._encode_query(query)
+        query_embedding = self.embedding_model.encode([query], show_progress_bar=False)
+        query_embedding = query_embedding.reshape(1, -1)
         
         # Apply filters to get candidate indices
         candidate_indices = self._apply_filters(filter_dict)

@@ -3,30 +3,21 @@ Embedding generation and vector database creation.
 
 This module embeds semantic chunks into a persistent Chroma vector database
 for retrieval-augmented generation.
-
-Phase 4.1 Experiment: Using OpenAI embeddings (text-embedding-3-small)
-instead of sentence-transformers (all-MiniLM-L6-v2) to evaluate impact
-on retrieval quality.
 """
 
 import json
 import pickle
-import os
-import time
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from collections import defaultdict
 from dotenv import load_dotenv
+from sentence_transformers import SentenceTransformer
 import numpy as np
 from tqdm import tqdm
-from openai import OpenAI
 
 load_dotenv(override=True)
 
-# Phase 4.1: Experiment with OpenAI embeddings
-EMBEDDING_MODEL = "text-embedding-3-small"  # Changed from "all-MiniLM-L6-v2"
-USE_OPENAI_EMBEDDINGS = True  # Flag to use OpenAI embeddings
-
+EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 VECTOR_DB_FILE = "vector_db.pkl"
 METADATA_FILE = "vector_db_metadata.json"
 
@@ -51,7 +42,7 @@ class ChunkEmbedder:
         self.vector_db_path = self.vector_db_dir / VECTOR_DB_FILE
         self.metadata_path = self.vector_db_dir / METADATA_FILE
         
-        # Phase 4.1: Force rebuild if requested (for clean experiment)
+        # Force rebuild if requested (for clean regeneration)
         if force_rebuild:
             print("🔄 Force rebuild requested - clearing existing vector DB...")
             if self.vector_db_path.exists():
@@ -61,18 +52,8 @@ class ChunkEmbedder:
             print("   ✅ Existing vector DB cleared")
         
         # Initialize embeddings model
-        if USE_OPENAI_EMBEDDINGS:
-            print(f"📥 Using OpenAI embedding model: {EMBEDDING_MODEL}")
-            api_key = os.getenv("OPENAI_API_KEY")
-            if not api_key:
-                raise ValueError("OPENAI_API_KEY environment variable is required for OpenAI embeddings")
-            self.openai_client = OpenAI(api_key=api_key)
-            self.embedding_model = None  # Not used for OpenAI
-        else:
-            print(f"📥 Loading embedding model: {EMBEDDING_MODEL}")
-            from sentence_transformers import SentenceTransformer
-            self.embedding_model = SentenceTransformer(EMBEDDING_MODEL)
-            self.openai_client = None
+        print(f"📥 Loading embedding model: {EMBEDDING_MODEL}")
+        self.embedding_model = SentenceTransformer(EMBEDDING_MODEL)
         
         # Load existing data if available
         self.embeddings = []
@@ -132,39 +113,6 @@ class ChunkEmbedder:
             text_parts.append(original_text)
         
         return '\n\n'.join(text_parts)
-    
-    def _encode_openai(self, texts: List[str]) -> List[List[float]]:
-        """
-        Encode texts using OpenAI embeddings API.
-        
-        Args:
-            texts: List of text strings to embed
-            
-        Returns:
-            List of embedding vectors (each is a list of floats)
-        """
-        # OpenAI API supports up to 2048 items per request, but we'll batch conservatively
-        batch_size = 100  # Conservative batch size to avoid rate limits
-        all_embeddings = []
-        
-        for i in range(0, len(texts), batch_size):
-            batch = texts[i:i + batch_size]
-            try:
-                response = self.openai_client.embeddings.create(
-                    model=EMBEDDING_MODEL,
-                    input=batch
-                )
-                batch_embeddings = [item.embedding for item in response.data]
-                all_embeddings.extend(batch_embeddings)
-                
-                # Small delay to respect rate limits
-                if i + batch_size < len(texts):
-                    time.sleep(0.1)
-            except Exception as e:
-                print(f"   ⚠️  Error encoding batch {i//batch_size + 1}: {e}")
-                raise
-        
-        return all_embeddings
     
     def _prepare_chunk_metadata(self, chunk: Dict[str, Any], source_metadata: Dict[str, Any]) -> Dict[str, Any]:
         """Prepare metadata for vector store."""
@@ -233,14 +181,10 @@ class ChunkEmbedder:
             # Generate embeddings and add to vector store in batch
             if documents:
                 # Generate embeddings
-                if USE_OPENAI_EMBEDDINGS:
-                    new_embeddings = self._encode_openai(documents)
-                else:
-                    new_embeddings = self.embedding_model.encode(documents, show_progress_bar=False)
-                    new_embeddings = new_embeddings.tolist()
+                new_embeddings = self.embedding_model.encode(documents, show_progress_bar=False)
                 
                 # Add to in-memory storage
-                self.embeddings.extend(new_embeddings)
+                self.embeddings.extend(new_embeddings.tolist())
                 self.documents.extend(documents)
                 self.metadatas.extend(metadatas)
                 
@@ -350,8 +294,6 @@ def main():
     embedder.embed_all()
     
     print("\n✅ Vector database ready for retrieval!")
-    if USE_OPENAI_EMBEDDINGS:
-        print(f"   Using OpenAI embeddings: {EMBEDDING_MODEL}")
 
 
 if __name__ == "__main__":

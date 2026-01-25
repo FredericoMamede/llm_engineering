@@ -2,9 +2,9 @@
 
 **Last Updated:** 2026-01-25
 
-## Current Phase: 🔬 **Phase 4.1** - Embedding Model Alignment Experiment
+## Current Phase: ✅ **Complete** - System Functional
 
-### Phase 4.1: Embedding Model Experiment (In Progress)
+### Phase 4.1: Embedding Model Alignment Experiment (Completed - Reverted)
 
 **Objective**: Evaluate the impact of embedding model choice on RAG retrieval quality.
 
@@ -14,17 +14,15 @@
 - **Test Set**: "core" (same test cases as baseline)
 - **Evaluation**: Offline evaluation harness (same metrics, same test cases)
 
-**Changes Made**:
-- ✅ Updated `ingest/embedder.py` to use OpenAI embeddings
-- ✅ Updated `core/vector_store.py` to use OpenAI embeddings for query encoding
-- ✅ Added force rebuild mechanism for clean vector DB regeneration
+**Results**:
+- Evaluation completed on "core" test set with OpenAI embeddings
+- **Outcome**: Regression observed in key retrieval metrics (MRR and nDCG decreased)
+- **Decision**: Changes reverted to restore baseline MiniLM embeddings
 
-**Status**: Code changes complete. Next steps:
-1. Re-ingest knowledge base with new embeddings (force rebuild)
-2. Run evaluation on "core" test set
-3. Compare results against baseline run
+**Conclusion**:
+The OpenAI embedding model (`text-embedding-3-small`) did not improve retrieval quality compared to the baseline `all-MiniLM-L6-v2` model. Metrics showed regression, indicating that the local sentence-transformers model performs better for this use case. All Phase 4.1 code changes have been reverted, and the system now uses the original MiniLM embedding configuration.
 
-**Note**: This is an **experiment**, not a permanent change. Results will determine if embedding model switch improves retrieval metrics.
+**Note**: Evaluation artifacts from Phase 4.1 are preserved in `evaluation/runs/` for reference. The experiment demonstrates the importance of measuring changes rather than assuming improvements.
 
 ---
 
@@ -132,8 +130,8 @@
 - ✅ Source discovery (`ingest/discoverer.py`) - HTTP + Playwright fallback
 - ✅ Document normalization - Integrated in discoverer
 - ✅ Semantic chunking (`ingest/chunker.py`) - LLM-based with structured outputs
-- ✅ Embedding generation (`ingest/embedder.py`) - **Phase 4.1**: Now using OpenAI `text-embedding-3-small` (experiment)
-- ✅ Vector store (`core/vector_store.py`) - Local pickle-based implementation, **Phase 4.1**: Updated for OpenAI embeddings
+- ✅ Embedding generation (`ingest/embedder.py`) - `all-MiniLM-L6-v2` (sentence-transformers)
+- ✅ Vector store (`core/vector_store.py`) - Local pickle-based implementation
 
 ### RAG Pipeline Layer ✅
 - ✅ Query rewriting - Integrated in `core/retriever.py`
