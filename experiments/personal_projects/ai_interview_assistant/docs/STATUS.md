@@ -1,8 +1,34 @@
 # Project Status
 
-**Last Updated:** 2026-01-22
+**Last Updated:** 2026-01-25
 
-## Current Phase: ✅ **Complete** - System Functional
+## Current Phase: 🔬 **Phase 4.1** - Embedding Model Alignment Experiment
+
+### Phase 4.1: Embedding Model Experiment (In Progress)
+
+**Objective**: Evaluate the impact of embedding model choice on RAG retrieval quality.
+
+**Experiment Design**:
+- **Baseline**: `all-MiniLM-L6-v2` (sentence-transformers, local)
+- **Experiment**: `text-embedding-3-small` (OpenAI, API-based)
+- **Test Set**: "core" (same test cases as baseline)
+- **Evaluation**: Offline evaluation harness (same metrics, same test cases)
+
+**Changes Made**:
+- ✅ Updated `ingest/embedder.py` to use OpenAI embeddings
+- ✅ Updated `core/vector_store.py` to use OpenAI embeddings for query encoding
+- ✅ Added force rebuild mechanism for clean vector DB regeneration
+
+**Status**: Code changes complete. Next steps:
+1. Re-ingest knowledge base with new embeddings (force rebuild)
+2. Run evaluation on "core" test set
+3. Compare results against baseline run
+
+**Note**: This is an **experiment**, not a permanent change. Results will determine if embedding model switch improves retrieval metrics.
+
+---
+
+## Previous Phase: ✅ **Complete** - System Functional (Phase 4.0)
 
 ### Completed ✅
 
@@ -106,8 +132,8 @@
 - ✅ Source discovery (`ingest/discoverer.py`) - HTTP + Playwright fallback
 - ✅ Document normalization - Integrated in discoverer
 - ✅ Semantic chunking (`ingest/chunker.py`) - LLM-based with structured outputs
-- ✅ Embedding generation (`ingest/embedder.py`) - all-MiniLM-L6-v2
-- ✅ Vector store (`core/vector_store.py`) - Local pickle-based implementation
+- ✅ Embedding generation (`ingest/embedder.py`) - **Phase 4.1**: Now using OpenAI `text-embedding-3-small` (experiment)
+- ✅ Vector store (`core/vector_store.py`) - Local pickle-based implementation, **Phase 4.1**: Updated for OpenAI embeddings
 
 ### RAG Pipeline Layer ✅
 - ✅ Query rewriting - Integrated in `core/retriever.py`

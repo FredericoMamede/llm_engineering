@@ -3,21 +3,30 @@ Embedding generation and vector database creation.
 
 This module embeds semantic chunks into a persistent Chroma vector database
 for retrieval-augmented generation.
+
+Phase 4.1 Experiment: Using OpenAI embeddings (text-embedding-3-small)
+instead of sentence-transformers (all-MiniLM-L6-v2) to evaluate impact
+on retrieval quality.
 """
 
 import json
 import pickle
+import os
+import time
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from collections import defaultdict
 from dotenv import load_dotenv
-from sentence_transformers import SentenceTransformer
 import numpy as np
 from tqdm import tqdm
+from openai import OpenAI
 
 load_dotenv(override=True)
 
-EMBEDDING_MODEL = "all-MiniLM-L6-v2"
+# Phase 4.1: Experiment with OpenAI embeddings
+EMBEDDING_MODEL = "text-embedding-3-small"  # Changed from "all-MiniLM-L6-v2"
+USE_OPENAI_EMBEDDINGS = True  # Flag to use OpenAI embeddings
+
 VECTOR_DB_FILE = "vector_db.pkl"
 METADATA_FILE = "vector_db_metadata.json"
 
@@ -25,18 +34,45 @@ METADATA_FILE = "vector_db_metadata.json"
 class ChunkEmbedder:
     """Embed semantic chunks into a vector database."""
     
-    def __init__(self, chunks_dir: Path, vector_db_dir: Path):
+    def __init__(self, chunks_dir: Path, vector_db_dir: Path, force_rebuild: bool = False):
+        """
+        Initialize embedder.
+        
+        Args:
+            chunks_dir: Directory containing chunk JSON files
+            vector_db_dir: Directory for vector database output
+            force_rebuild: If True, delete existing vector DB and rebuild from scratch
+        """
         self.chunks_dir = chunks_dir
         self.vector_db_dir = vector_db_dir
         self.vector_db_dir.mkdir(parents=True, exist_ok=True)
         
-        # Initialize embeddings model
-        print(f"📥 Loading embedding model: {EMBEDDING_MODEL}")
-        self.embedding_model = SentenceTransformer(EMBEDDING_MODEL)
-        
         # Vector DB file paths
         self.vector_db_path = self.vector_db_dir / VECTOR_DB_FILE
         self.metadata_path = self.vector_db_dir / METADATA_FILE
+        
+        # Phase 4.1: Force rebuild if requested (for clean experiment)
+        if force_rebuild:
+            print("🔄 Force rebuild requested - clearing existing vector DB...")
+            if self.vector_db_path.exists():
+                self.vector_db_path.unlink()
+            if self.metadata_path.exists():
+                self.metadata_path.unlink()
+            print("   ✅ Existing vector DB cleared")
+        
+        # Initialize embeddings model
+        if USE_OPENAI_EMBEDDINGS:
+            print(f"📥 Using OpenAI embedding model: {EMBEDDING_MODEL}")
+            api_key = os.getenv("OPENAI_API_KEY")
+            if not api_key:
+                raise ValueError("OPENAI_API_KEY environment variable is required for OpenAI embeddings")
+            self.openai_client = OpenAI(api_key=api_key)
+            self.embedding_model = None  # Not used for OpenAI
+        else:
+            print(f"📥 Loading embedding model: {EMBEDDING_MODEL}")
+            from sentence_transformers import SentenceTransformer
+            self.embedding_model = SentenceTransformer(EMBEDDING_MODEL)
+            self.openai_client = None
         
         # Load existing data if available
         self.embeddings = []
@@ -96,6 +132,39 @@ class ChunkEmbedder:
             text_parts.append(original_text)
         
         return '\n\n'.join(text_parts)
+    
+    def _encode_openai(self, texts: List[str]) -> List[List[float]]:
+        """
+        Encode texts using OpenAI embeddings API.
+        
+        Args:
+            texts: List of text strings to embed
+            
+        Returns:
+            List of embedding vectors (each is a list of floats)
+        """
+        # OpenAI API supports up to 2048 items per request, but we'll batch conservatively
+        batch_size = 100  # Conservative batch size to avoid rate limits
+        all_embeddings = []
+        
+        for i in range(0, len(texts), batch_size):
+            batch = texts[i:i + batch_size]
+            try:
+                response = self.openai_client.embeddings.create(
+                    model=EMBEDDING_MODEL,
+                    input=batch
+                )
+                batch_embeddings = [item.embedding for item in response.data]
+                all_embeddings.extend(batch_embeddings)
+                
+                # Small delay to respect rate limits
+                if i + batch_size < len(texts):
+                    time.sleep(0.1)
+            except Exception as e:
+                print(f"   ⚠️  Error encoding batch {i//batch_size + 1}: {e}")
+                raise
+        
+        return all_embeddings
     
     def _prepare_chunk_metadata(self, chunk: Dict[str, Any], source_metadata: Dict[str, Any]) -> Dict[str, Any]:
         """Prepare metadata for vector store."""
@@ -164,10 +233,14 @@ class ChunkEmbedder:
             # Generate embeddings and add to vector store in batch
             if documents:
                 # Generate embeddings
-                new_embeddings = self.embedding_model.encode(documents, show_progress_bar=False)
+                if USE_OPENAI_EMBEDDINGS:
+                    new_embeddings = self._encode_openai(documents)
+                else:
+                    new_embeddings = self.embedding_model.encode(documents, show_progress_bar=False)
+                    new_embeddings = new_embeddings.tolist()
                 
                 # Add to in-memory storage
-                self.embeddings.extend(new_embeddings.tolist())
+                self.embeddings.extend(new_embeddings)
                 self.documents.extend(documents)
                 self.metadatas.extend(metadatas)
                 
@@ -257,14 +330,28 @@ class ChunkEmbedder:
 
 def main():
     """Main entry point for embedding generation."""
+    import sys
+    
     project_root = Path(__file__).parent.parent
     chunks_dir = project_root / "data" / "chunks"
     vector_db_dir = project_root / "data" / "vector_db"
     
-    embedder = ChunkEmbedder(chunks_dir, vector_db_dir)
+    # Phase 4.1: Allow force rebuild for clean experiment
+    force_rebuild = "--force-rebuild" in sys.argv or "-f" in sys.argv
+    
+    if force_rebuild:
+        print("⚠️  FORCE REBUILD MODE: Existing vector DB will be deleted!")
+        response = input("Continue? (yes/no): ")
+        if response.lower() != "yes":
+            print("Aborted.")
+            return
+    
+    embedder = ChunkEmbedder(chunks_dir, vector_db_dir, force_rebuild=force_rebuild)
     embedder.embed_all()
     
     print("\n✅ Vector database ready for retrieval!")
+    if USE_OPENAI_EMBEDDINGS:
+        print(f"   Using OpenAI embeddings: {EMBEDDING_MODEL}")
 
 
 if __name__ == "__main__":
