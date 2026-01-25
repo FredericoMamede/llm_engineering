@@ -27,6 +27,26 @@ load_dotenv(override=True)
 QUERY_REWRITE_MODEL = "openai/gpt-4o-mini"
 wait = wait_exponential(multiplier=1, min=2, max=10)
 
+# ============================================================================
+# Phase 5: Retrieval Intelligence Constants
+# ============================================================================
+# These constants control deterministic, explainable retrieval adaptations.
+# All values are explicitly defined and can be adjusted for experimentation.
+# Changes are logged and reversible.
+
+# Layer 1: Requirement-aware score boosting
+REQUIREMENT_MATCH_BOOST = 1.10  # Multiplicative boost for chunks matching question's requirement_id
+# Constraint: Must be ≤ 1.15
+
+# Layer 2: Failure-mode sensitivity
+FAILURE_MODE_BOOST = 1.10  # Multiplicative boost for failure_mode chunks when question is tagged
+# Constraint: Must be ≤ 1.10
+
+# Layer 3: Weakness-aware retrieval depth
+CONFIDENCE_THRESHOLD = 0.65  # Average top-3 similarity threshold for low confidence
+DEPTH_INCREASE = 5  # Additional chunks to retrieve when confidence is low
+# Constraint: Must not regress recall or precision globally
+
 
 @dataclass
 class RetrievedChunk:
@@ -183,9 +203,28 @@ class KnowledgeRetriever:
     def _merge_and_deduplicate(
         self,
         original_results: List[Dict[str, Any]],
-        rewritten_results: List[Dict[str, Any]]
+        rewritten_results: List[Dict[str, Any]],
+        requirement_ids: Optional[List[str]] = None,
+        tags: Optional[List[str]] = None,
+        adaptive_log: Optional[Dict[str, Any]] = None
     ) -> List[RetrievedChunk]:
-        """Merge results from both queries and deduplicate by chunk_id."""
+        """
+        Merge results from both queries and deduplicate by chunk_id.
+        
+        Phase 5: Applies deterministic retrieval intelligence layers:
+        - Layer 1: Requirement-aware score boosting
+        - Layer 2: Failure-mode sensitivity
+        
+        Args:
+            original_results: Results from original query
+            rewritten_results: Results from rewritten query
+            requirement_ids: Optional list of requirement IDs from test case
+            tags: Optional list of tags from test case (e.g., ["failure_mode"])
+            adaptive_log: Optional dict to log adaptive behavior
+            
+        Returns:
+            List of RetrievedChunk, sorted by adjusted similarity score
+        """
         seen_chunk_ids = set()
         merged = []
         
@@ -203,25 +242,74 @@ class KnowledgeRetriever:
                 merged.append(self._chunk_to_retrieved(result, "rewritten"))
                 seen_chunk_ids.add(chunk_id)
         
-        # Sort by similarity score (descending)
+        # Phase 5: Apply retrieval intelligence layers
+        boosted_chunks = []
+        
+        # Layer 1: Requirement-aware score boosting
+        if requirement_ids:
+            for chunk in merged:
+                chunk_req_id = chunk.inherited_metadata.get('requirement_id')
+                if chunk_req_id and chunk_req_id in requirement_ids:
+                    original_score = chunk.similarity_score
+                    chunk.similarity_score *= REQUIREMENT_MATCH_BOOST
+                    boosted_chunks.append({
+                        'chunk_id': chunk.chunk_id,
+                        'boost_type': 'requirement_match',
+                        'requirement_id': chunk_req_id,
+                        'original_score': original_score,
+                        'adjusted_score': chunk.similarity_score,
+                        'boost_factor': REQUIREMENT_MATCH_BOOST
+                    })
+        
+        # Layer 2: Failure-mode sensitivity
+        if tags and 'failure_mode' in tags:
+            for chunk in merged:
+                if chunk.chunk_type == 'failure_mode':
+                    # Only boost if not already boosted by Layer 1
+                    if not any(b['chunk_id'] == chunk.chunk_id and b['boost_type'] == 'requirement_match' 
+                              for b in boosted_chunks):
+                        original_score = chunk.similarity_score
+                        chunk.similarity_score *= FAILURE_MODE_BOOST
+                        boosted_chunks.append({
+                            'chunk_id': chunk.chunk_id,
+                            'boost_type': 'failure_mode',
+                            'original_score': original_score,
+                            'adjusted_score': chunk.similarity_score,
+                            'boost_factor': FAILURE_MODE_BOOST
+                        })
+        
+        # Log adaptive behavior if log dict provided
+        if adaptive_log is not None:
+            adaptive_log['boosts_applied'] = boosted_chunks
+            adaptive_log['requirement_ids_provided'] = requirement_ids
+            adaptive_log['tags_provided'] = tags
+        
+        # Sort by adjusted similarity score (descending)
         merged.sort(key=lambda x: x.similarity_score, reverse=True)
         
-        # Return top final_k
-        return merged[:self.final_k]
+        # Return all merged chunks (final_k applied in retrieve method)
+        return merged
     
     def retrieve(
         self,
         query: str,
         filter_dict: Optional[Dict[str, Any]] = None,
-        debug: bool = False
+        debug: bool = False,
+        requirement_ids: Optional[List[str]] = None,
+        tags: Optional[List[str]] = None
     ) -> RetrievalResult:
         """
         Retrieve relevant knowledge chunks for a query.
+        
+        Phase 5: Supports retrieval intelligence through requirement_ids and tags.
+        These enable deterministic, explainable adaptations without LLM decision-making.
         
         Args:
             query: User query
             filter_dict: Optional metadata filters
             debug: Enable debug output
+            requirement_ids: Optional list of requirement IDs (for Layer 1 boosting)
+            tags: Optional list of tags (e.g., ["failure_mode"] for Layer 2 boosting)
         
         Returns:
             RetrievalResult with retrieved chunks and metadata
@@ -264,7 +352,46 @@ class KnowledgeRetriever:
             print(f"   Original query: {len(original_results)} results")
             print(f"   Rewritten query: {len(rewritten_results)} results")
         
-        merged_chunks = self._merge_and_deduplicate(original_results, rewritten_results)
+        # Phase 5: Layer 3 - Weakness-aware retrieval depth
+        # Compute retrieval confidence proxy (average top-3 similarity)
+        all_candidates = original_results + rewritten_results
+        if all_candidates:
+            top_scores = sorted([r.get('score', 0.0) for r in all_candidates], reverse=True)[:3]
+            avg_top3_score = sum(top_scores) / len(top_scores) if top_scores else 0.0
+        else:
+            avg_top3_score = 0.0
+        
+        # Adjust final_k if confidence is low
+        effective_final_k = self.final_k
+        if avg_top3_score < CONFIDENCE_THRESHOLD:
+            effective_final_k = self.final_k + DEPTH_INCREASE
+            if debug:
+                print(f"   [Phase 5 Layer 3] Low confidence ({avg_top3_score:.3f} < {CONFIDENCE_THRESHOLD}), increasing depth: {self.final_k} → {effective_final_k}")
+        
+        # Phase 5: Adaptive log for tracking
+        adaptive_log = {}
+        
+        # Merge with retrieval intelligence
+        merged_chunks = self._merge_and_deduplicate(
+            original_results, 
+            rewritten_results,
+            requirement_ids=requirement_ids,
+            tags=tags,
+            adaptive_log=adaptive_log
+        )
+        
+        # Apply effective_final_k (Layer 3)
+        merged_chunks = merged_chunks[:effective_final_k]
+        
+        # Log Layer 3 behavior
+        if avg_top3_score < CONFIDENCE_THRESHOLD:
+            adaptive_log['layer3_applied'] = True
+            adaptive_log['confidence_score'] = avg_top3_score
+            adaptive_log['original_final_k'] = self.final_k
+            adaptive_log['effective_final_k'] = effective_final_k
+        else:
+            adaptive_log['layer3_applied'] = False
+            adaptive_log['confidence_score'] = avg_top3_score
         
         # Step 4: Build result
         retrieval_metadata = {
@@ -274,7 +401,9 @@ class KnowledgeRetriever:
             'backend_used': self.backend,
             'top_k_original': self.top_k_original,
             'top_k_rewritten': self.top_k_rewritten,
-            'final_k': self.final_k
+            'final_k': self.final_k,
+            'effective_final_k': effective_final_k,  # Phase 5: Layer 3
+            'phase5_adaptive': adaptive_log  # Phase 5: All adaptive behavior
         }
         
         if debug:

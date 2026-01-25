@@ -400,6 +400,26 @@ RAG evaluations are computationally expensive (multiple LLM calls per test case)
      - Retrieval-answer mismatches
      - Export analysis report
 
+### Retrieval Intelligence (Phase 5)
+
+The system includes deterministic retrieval intelligence that adapts behavior based on structured signals:
+
+**How It Works:**
+- **Requirement-Aware Boosting**: When questions target specific requirements (e.g., req_8, req_9, req_10), chunks matching those requirements receive a small score boost (10%) to improve early ranking.
+- **Failure-Mode Sensitivity**: Questions tagged with `failure_mode` boost failure_mode chunks (10%) to surface diagnostic content.
+- **Weakness-Aware Depth**: When retrieval confidence is low (average top-3 similarity < 0.65), the system automatically increases retrieval depth by +5 chunks to improve recall.
+
+**Important Notes:**
+- All adaptations are **deterministic and explainable** (no LLM decision-making)
+- Behavior is **logged** in retrieval metadata (`retrieval_metadata['phase5_adaptive']`) for transparency
+- Changes are **fully reversible** and **measurable** through offline evaluation
+- The system emphasizes **offline evaluation** and **measured improvements** over blind optimization
+
+**For Developers:**
+- Constants are defined in `core/retriever.py` (REQUIREMENT_MATCH_BOOST, FAILURE_MODE_BOOST, CONFIDENCE_THRESHOLD, DEPTH_INCREASE)
+- All adaptive behavior is logged in `retrieval_metadata['phase5_adaptive']`
+- Each layer can be independently disabled for ablation studies
+
 ### Understanding Evaluation Metrics
 
 - **Average Concept MRR**: Mean Reciprocal Rank - how highly ranked relevant chunks are

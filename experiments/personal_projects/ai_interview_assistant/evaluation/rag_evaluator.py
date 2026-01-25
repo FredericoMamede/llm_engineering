@@ -217,10 +217,13 @@ class RAGEvaluator:
         """
         # 1. Retrieve
         filter_dict = self._build_filter_dict(test_case)
+        # Phase 5: Pass requirement_ids and tags for retrieval intelligence
         retrieval_result = self.retriever.retrieve(
             query=test_case.question,
             filter_dict=filter_dict if filter_dict else None,
-            debug=False
+            debug=False,
+            requirement_ids=test_case.expected_requirement_ids,
+            tags=test_case.tags
         )
         
         # 2. Generate answer

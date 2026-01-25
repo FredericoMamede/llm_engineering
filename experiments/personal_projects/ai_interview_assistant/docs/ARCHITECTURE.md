@@ -63,6 +63,29 @@ Query → Rewrite → Dual Retrieval → Merge & Deduplicate → Filter → Answ
 **Ranking Design Decision:**
 Retrieval ranking is intentionally simple and similarity-based. Phase 4.3 tested heuristic ranking approaches (dual-retrieval boosting, chunk-type penalties) but evaluation showed these did not meaningfully improve MRR or nDCG. The current implementation prioritizes transparency and evaluation-driven iteration over complex ranking heuristics.
 
+**Adaptive Retrieval (Deterministic) - Phase 5:**
+The system includes deterministic retrieval intelligence that adapts behavior based on structured signals without LLM decision-making:
+
+- **Requirement-Aware Boosting**: Chunks matching the question's requirement_id receive a small score boost (1.10x) to improve early ranking for requirement-specific questions.
+
+- **Failure-Mode Sensitivity**: When questions are tagged with `failure_mode`, failure_mode chunks receive a boost (1.10x) to surface diagnostic content.
+
+- **Weakness-Aware Depth**: When retrieval confidence (average top-3 similarity) is low (< 0.65), the system increases retrieval depth by +5 chunks to improve recall.
+
+**Why This Is Not Agentic:**
+- All adaptations use explicit constants (no learned parameters)
+- Logic is deterministic and explainable (no hidden heuristics)
+- Behavior is logged and reversible (full transparency)
+- No LLM-based decision making (no prompt-based magic)
+- Changes are measurable through offline evaluation
+
+**Rigor Preservation:**
+- All adaptations are logged in `retrieval_metadata['phase5_adaptive']`
+- Constants are defined at module level (easily adjustable)
+- Each layer is independently ablatable (can be disabled individually)
+- Evaluation metrics remain unchanged (same test sets, same metrics)
+- Changes are fully reversible (no permanent state)
+
 ### 3. Mode Layer
 
 **Components:**

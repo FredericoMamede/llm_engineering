@@ -2,7 +2,54 @@
 
 **Last Updated:** 2026-01-25
 
-## Current Phase: ✅ **Phase 4.5** - Chunk Identity Fix (Complete)
+## Current Phase: 🔬 **Phase 5** - Retrieval Intelligence
+
+### Phase 5: Retrieval Intelligence (In Progress)
+
+**Objective**: Introduce retrieval intelligence that improves performance through controlled, explainable, and testable mechanisms without losing determinism or measurability.
+
+**Approach**: Three deterministic layers that adapt retrieval behavior based on structured signals (requirement_ids, tags, confidence scores).
+
+**Layer 1: Requirement-Aware Score Boosting** ✅ (Implemented)
+- **Change**: Chunks matching the question's requirement_id receive a 10% similarity score boost
+- **Constant**: `REQUIREMENT_MATCH_BOOST = 1.10` (≤ 1.15 constraint)
+- **Applied**: After merge & deduplication, before final sorting
+- **Rationale**: Improve early ranking (MRR) by favoring chunks aligned with the question's requirement
+- **Status**: Implemented, awaiting evaluation
+
+**Layer 2: Failure-Mode Sensitivity** ✅ (Implemented)
+- **Change**: When question is tagged with `failure_mode`, failure_mode chunks receive a 10% boost
+- **Constant**: `FAILURE_MODE_BOOST = 1.10` (≤ 1.10 constraint)
+- **Applied**: After merge & deduplication, before final sorting
+- **Rationale**: Surface diagnostic content when questions imply failure analysis
+- **Status**: Implemented, awaiting evaluation
+
+**Layer 3: Weakness-Aware Retrieval Depth** ✅ (Implemented)
+- **Change**: When retrieval confidence (avg top-3 similarity) < 0.65, increase final_k by +5
+- **Constants**: `CONFIDENCE_THRESHOLD = 0.65`, `DEPTH_INCREASE = 5`
+- **Applied**: Before final result truncation
+- **Rationale**: Increase recall only when retrieval confidence is low
+- **Status**: Implemented, awaiting evaluation
+
+**Design Principles**:
+- Deterministic logic only (no LLM decision-making)
+- Score-based, explainable adjustments
+- Explicit constants (easily adjustable)
+- Logged behavior (all adaptations tracked in retrieval_metadata)
+- Fully reversible changes
+
+**Evaluation Requirements**:
+- Run evaluation without changing data
+- Compare against Phase 4.4 baseline
+- Measure deltas for: Concept MRR, nDCG@10, Recall@10, Concept Coverage, Weakest requirements
+- If ≥2 core metrics improve → KEEP
+- If any major regression → REVERT that layer only
+
+**Status**: Implementation complete, awaiting evaluation to measure impact
+
+---
+
+## Previous Phase: ✅ **Phase 4.5** - Chunk Identity Fix (Complete)
 
 ### Phase 4.5: Chunk Identity Fix (Completed)
 
