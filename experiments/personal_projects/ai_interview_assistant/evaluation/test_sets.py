@@ -644,6 +644,236 @@ CORE_TEST_CASES: List[TestCase] = [
         tags=["communication", "code-reviews", "collaboration"],
         notes="Tests retrieval of technical communication in code review context"
     ),
+    
+    # ============================================================================
+    # Phase 4.2 Iteration 2: Balance and Stability Additions
+    # Focus on weakest requirements (8, 9, 10, 11) with medium-difficulty
+    # questions to reduce variance and improve diagnostic value
+    # ============================================================================
+    
+    # Requirement 8: AI/LLM APIs (additional medium-difficulty cases)
+    TestCase(
+        test_id="test_034",
+        question="What are the key considerations when choosing between streaming and non-streaming responses from LLM APIs?",
+        expected_concepts=[
+            "streaming responses",
+            "non-streaming",
+            "user experience",
+            "latency",
+            "API design",
+            "response handling"
+        ],
+        expected_requirement_ids=["req_8"],
+        expected_chunk_types=["primary", "tradeoff"],
+        category="tradeoff_analysis",
+        difficulty="medium",
+        tags=["llm", "api-design", "tradeoff", "paraphrase"],
+        notes="Phase 4.2 Iteration 2: Narrower variant of LLM API design question to reduce variance"
+    ),
+    
+    TestCase(
+        test_id="test_035",
+        question="How do you implement error handling and fallback strategies when LLM API calls fail or return unexpected responses?",
+        expected_concepts=[
+            "error handling",
+            "fallback strategies",
+            "API failures",
+            "retry logic",
+            "graceful degradation",
+            "response validation"
+        ],
+        expected_requirement_ids=["req_8"],
+        expected_chunk_types=["primary", "failure_mode"],
+        category="system_design",
+        difficulty="medium",
+        tags=["llm", "error-handling", "failure_mode"],
+        notes="Phase 4.2 Iteration 2: Medium-difficulty failure mode question for req_8 to balance hard questions"
+    ),
+    
+    TestCase(
+        test_id="test_036",
+        question="What prompt engineering techniques help ensure LLM outputs follow a specific format or structure?",
+        expected_concepts=[
+            "prompt engineering",
+            "structured outputs",
+            "format constraints",
+            "output parsing",
+            "prompt design",
+            "consistency"
+        ],
+        expected_requirement_ids=["req_8"],
+        category="direct_fact",
+        difficulty="medium",
+        tags=["llm", "prompt-engineering", "paraphrase"],
+        notes="Phase 4.2 Iteration 2: Paraphrased variant of test_021 to test retrieval stability"
+    ),
+    
+    # Requirement 9: Product thinking (additional medium-difficulty cases)
+    TestCase(
+        test_id="test_037",
+        question="How do you evaluate whether a technical solution addresses the actual user problem versus just the stated requirements?",
+        expected_concepts=[
+            "user problems",
+            "requirements analysis",
+            "problem validation",
+            "user needs",
+            "solution evaluation",
+            "product thinking"
+        ],
+        expected_requirement_ids=["req_9"],
+        category="system_design",
+        difficulty="medium",
+        tags=["product-thinking", "requirements", "paraphrase"],
+        notes="Phase 4.2 Iteration 2: Medium-difficulty variant of product thinking to balance hard questions"
+    ),
+    
+    TestCase(
+        test_id="test_038",
+        question="What factors should influence your decision to refactor existing code versus building new features?",
+        expected_concepts=[
+            "refactoring",
+            "feature development",
+            "code quality",
+            "technical debt",
+            "prioritization",
+            "product decisions"
+        ],
+        expected_requirement_ids=["req_9"],
+        expected_chunk_types=["primary", "tradeoff"],
+        category="tradeoff_analysis",
+        difficulty="medium",
+        tags=["product-thinking", "refactoring", "tradeoff"],
+        notes="Phase 4.2 Iteration 2: Medium-difficulty tradeoff question for req_9 to improve balance"
+    ),
+    
+    TestCase(
+        test_id="test_039",
+        question="How do you determine the minimum viable scope for a feature when multiple stakeholders have different priorities?",
+        expected_concepts=[
+            "minimum viable scope",
+            "stakeholder priorities",
+            "feature scoping",
+            "product decisions",
+            "prioritization",
+            "business alignment"
+        ],
+        expected_requirement_ids=["req_9"],
+        category="direct_fact",
+        difficulty="medium",
+        tags=["product-thinking", "scoping", "paraphrase"],
+        notes="Phase 4.2 Iteration 2: Narrower, medium-difficulty question to reduce variance in req_9 metrics"
+    ),
+    
+    # Requirement 10: Autonomous work (additional medium-difficulty cases)
+    TestCase(
+        test_id="test_040",
+        question="How do you break down a large, ambiguous feature request into actionable tasks when working independently?",
+        expected_concepts=[
+            "task breakdown",
+            "ambiguous requirements",
+            "independent work",
+            "feature planning",
+            "autonomous work",
+            "task decomposition"
+        ],
+        expected_requirement_ids=["req_10"],
+        category="system_design",
+        difficulty="medium",
+        tags=["autonomous-work", "task-management", "paraphrase"],
+        notes="Phase 4.2 Iteration 2: Narrower variant of autonomous work question to improve stability"
+    ),
+    
+    TestCase(
+        test_id="test_041",
+        question="What strategies help you make progress on complex problems when you're blocked and can't immediately get help?",
+        expected_concepts=[
+            "problem solving",
+            "blockers",
+            "independent work",
+            "research strategies",
+            "autonomous work",
+            "self-directed learning"
+        ],
+        expected_requirement_ids=["req_10"],
+        expected_chunk_types=["primary", "failure_mode"],
+        category="system_design",
+        difficulty="medium",
+        tags=["autonomous-work", "problem-solving", "failure_mode"],
+        notes="Phase 4.2 Iteration 2: Medium-difficulty failure mode question for req_10"
+    ),
+    
+    TestCase(
+        test_id="test_042",
+        question="How do you estimate and communicate realistic timelines for features when working in a startup with changing priorities?",
+        expected_concepts=[
+            "time estimation",
+            "changing priorities",
+            "startup environment",
+            "communication",
+            "autonomous work",
+            "timeline management"
+        ],
+        expected_requirement_ids=["req_10"],
+        category="direct_fact",
+        difficulty="medium",
+        tags=["autonomous-work", "estimation", "startup", "paraphrase"],
+        notes="Phase 4.2 Iteration 2: Paraphrased variant focusing on estimation to reduce variance"
+    ),
+    
+    # Requirement 11: English communication (additional medium-difficulty cases)
+    TestCase(
+        test_id="test_043",
+        question="How do you explain complex technical concepts to non-technical team members or stakeholders?",
+        expected_concepts=[
+            "technical communication",
+            "non-technical audience",
+            "concept explanation",
+            "clarity",
+            "simplification",
+            "stakeholder communication"
+        ],
+        expected_requirement_ids=["req_11"],
+        category="direct_fact",
+        difficulty="medium",
+        tags=["communication", "technical-writing", "paraphrase"],
+        notes="Phase 4.2 Iteration 2: Paraphrased variant of test_031 to test retrieval stability"
+    ),
+    
+    TestCase(
+        test_id="test_044",
+        question="What are effective ways to provide constructive feedback in code reviews without discouraging collaboration?",
+        expected_concepts=[
+            "code reviews",
+            "constructive feedback",
+            "collaboration",
+            "communication",
+            "team dynamics",
+            "technical communication"
+        ],
+        expected_requirement_ids=["req_11"],
+        category="system_design",
+        difficulty="medium",
+        tags=["communication", "code-reviews", "paraphrase"],
+        notes="Phase 4.2 Iteration 2: Narrower variant of test_033 to improve balance"
+    ),
+    
+    TestCase(
+        test_id="test_045",
+        question="How do you write clear commit messages and technical updates that help team members understand changes quickly?",
+        expected_concepts=[
+            "commit messages",
+            "technical updates",
+            "clarity",
+            "team communication",
+            "documentation",
+            "written communication"
+        ],
+        expected_requirement_ids=["req_11"],
+        category="direct_fact",
+        difficulty="medium",
+        tags=["communication", "documentation", "paraphrase"],
+        notes="Phase 4.2 Iteration 2: Medium-difficulty question to balance req_11 and reduce variance"
+    ),
 ]
 
 
