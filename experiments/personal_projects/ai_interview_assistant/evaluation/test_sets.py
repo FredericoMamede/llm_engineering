@@ -3,8 +3,6 @@ Curated test case definitions for RAG evaluation.
 
 This module contains manually curated test cases organized by category and difficulty.
 Test cases specify concept-based expectations, not ground truth answers.
-
-These are design sketches - not yet implemented.
 """
 
 from typing import List, Optional
@@ -16,7 +14,6 @@ from evaluation.data_contracts import TestCase
 # ============================================================================
 
 CORE_TEST_CASES: List[TestCase] = [
-    # Example test case - not a real implementation
     TestCase(
         test_id="test_001",
         question="How does TypeScript help with large-scale JavaScript development?",
@@ -25,15 +22,49 @@ CORE_TEST_CASES: List[TestCase] = [
             "type safety",
             "compile-time error checking",
             "IDE support",
-            "refactoring safety"
+            "refactoring safety",
+            "type inference"
         ],
-        expected_requirement_ids=["req_001"],  # If targeting specific requirement
         category="direct_fact",
         difficulty="medium",
         tags=["typescript", "javascript", "language_features"],
         notes="Tests retrieval of TypeScript benefits for large-scale development"
     ),
-    # TODO: Add more test cases
+    
+    TestCase(
+        test_id="test_002",
+        question="What are the key differences between REST and GraphQL APIs?",
+        expected_concepts=[
+            "REST",
+            "GraphQL",
+            "over-fetching",
+            "under-fetching",
+            "single endpoint",
+            "multiple endpoints",
+            "query flexibility"
+        ],
+        category="direct_fact",
+        difficulty="medium",
+        tags=["api", "rest", "graphql", "architecture"],
+        notes="Tests retrieval of API design concepts"
+    ),
+    
+    TestCase(
+        test_id="test_003",
+        question="Explain how React's virtual DOM improves performance.",
+        expected_concepts=[
+            "virtual DOM",
+            "DOM diffing",
+            "reconciliation",
+            "batch updates",
+            "performance optimization",
+            "minimal DOM manipulation"
+        ],
+        category="direct_fact",
+        difficulty="medium",
+        tags=["react", "frontend", "performance"],
+        notes="Tests retrieval of React core concepts"
+    ),
 ]
 
 
@@ -42,7 +73,6 @@ CORE_TEST_CASES: List[TestCase] = [
 # ============================================================================
 
 SYSTEM_DESIGN_TEST_CASES: List[TestCase] = [
-    # Example test case - not a real implementation
     TestCase(
         test_id="test_sd_001",
         question="How would you design a distributed rate limiting system?",
@@ -52,39 +82,61 @@ SYSTEM_DESIGN_TEST_CASES: List[TestCase] = [
             "token bucket",
             "sliding window",
             "consistency guarantees",
-            "scalability"
+            "scalability",
+            "Redis",
+            "distributed coordination"
         ],
         expected_chunk_types=["primary", "tradeoff", "failure_mode"],
         category="system_design",
         difficulty="hard",
-        tags=["distributed-systems", "rate-limiting"],
+        tags=["distributed-systems", "rate-limiting", "scalability"],
         notes="Tests retrieval of system design concepts for rate limiting"
     ),
-    # TODO: Add more test cases
+    
+    TestCase(
+        test_id="test_sd_002",
+        question="What are the tradeoffs between microservices and monolithic architectures?",
+        expected_concepts=[
+            "microservices",
+            "monolithic architecture",
+            "scalability",
+            "deployment complexity",
+            "service boundaries",
+            "distributed systems challenges",
+            "team autonomy"
+        ],
+        expected_chunk_types=["primary", "tradeoff"],
+        category="system_design",
+        difficulty="hard",
+        tags=["architecture", "microservices", "tradeoffs"],
+        notes="Tests retrieval of architectural tradeoff concepts"
+    ),
 ]
 
 
 # ============================================================================
-# Company-Specific Test Cases
+# Tradeoff Analysis Test Cases
 # ============================================================================
 
-COMPANY_SPECIFIC_TEST_CASES: List[TestCase] = [
-    # Example test case - not a real implementation
+TRADEOFF_TEST_CASES: List[TestCase] = [
     TestCase(
-        test_id="test_company_001",
-        question="What are Eventyr's engineering practices for code review?",
+        test_id="test_to_001",
+        question="What are the tradeoffs of using NoSQL vs SQL databases?",
         expected_concepts=[
-            "code review process",
-            "pull request workflow",
-            "engineering culture"
+            "NoSQL",
+            "SQL",
+            "ACID properties",
+            "scalability",
+            "consistency",
+            "schema flexibility",
+            "transaction support"
         ],
-        expected_company_domains=["eventyr_engineering"],
-        category="company_specific",
+        expected_chunk_types=["primary", "tradeoff"],
+        category="tradeoff_analysis",
         difficulty="medium",
-        tags=["eventyr", "engineering-practices"],
-        notes="Tests retrieval of company-specific knowledge"
+        tags=["database", "nosql", "sql", "tradeoffs"],
+        notes="Tests retrieval of database tradeoff concepts"
     ),
-    # TODO: Add more test cases
 ]
 
 
@@ -97,7 +149,7 @@ def get_test_set(name: str) -> List[TestCase]:
     Load a test set by name.
     
     Args:
-        name: Test set name (e.g., "core", "system_design", "company_specific")
+        name: Test set name (e.g., "core", "system_design", "tradeoff", "all")
     
     Returns:
         List of TestCase objects
@@ -108,8 +160,8 @@ def get_test_set(name: str) -> List[TestCase]:
     test_sets = {
         "core": CORE_TEST_CASES,
         "system_design": SYSTEM_DESIGN_TEST_CASES,
-        "company_specific": COMPANY_SPECIFIC_TEST_CASES,
-        # TODO: Add more test sets
+        "tradeoff": TRADEOFF_TEST_CASES,
+        "all": CORE_TEST_CASES + SYSTEM_DESIGN_TEST_CASES + TRADEOFF_TEST_CASES,
     }
     
     if name not in test_sets:
@@ -158,9 +210,4 @@ def get_all_test_cases() -> List[TestCase]:
     Returns:
         Combined list of all TestCase objects
     """
-    all_cases = []
-    all_cases.extend(CORE_TEST_CASES)
-    all_cases.extend(SYSTEM_DESIGN_TEST_CASES)
-    all_cases.extend(COMPANY_SPECIFIC_TEST_CASES)
-    # TODO: Add more test sets
-    return all_cases
+    return CORE_TEST_CASES + SYSTEM_DESIGN_TEST_CASES + TRADEOFF_TEST_CASES

@@ -227,7 +227,7 @@ class EvaluationRun:
     
     # Summary statistics
     total_test_cases: int
-    avg_mrr: float
+    avg_concept_mrr: float
     avg_ndcg_at_10: float
     avg_recall_at_10: float
     avg_concept_coverage: float
@@ -713,7 +713,7 @@ def _evaluate_answer(
   "retrieval_metrics": [...],  # Array of RetrievalMetrics objects
   "answer_metrics": {...},  # AnswerMetrics object
   "total_test_cases": 50,
-  "avg_mrr": 0.75,
+  "avg_concept_mrr": 0.75,
   "avg_ndcg_at_10": 0.82,
   "avg_recall_at_10": 0.68,
   "avg_concept_coverage": 0.85,
@@ -760,7 +760,7 @@ def _evaluate_answer(
       "timestamp": "2025-01-23T14:30:22",
       "test_set_name": "core",
       "total_test_cases": 50,
-      "avg_mrr": 0.75,
+      "avg_concept_mrr": 0.75,
       "avg_confidence_score": 3.8
     },
     ...
@@ -823,7 +823,7 @@ evaluator = RAGEvaluator(
 run = evaluator.evaluate_test_set("core")
 
 # Access results
-print(f"Average MRR: {run.avg_mrr}")
+print(f"Average MRR: {run.avg_concept_mrr}")
 print(f"Average nDCG@10: {run.avg_ndcg_at_10}")
 print(f"Average Confidence Score: {run.avg_confidence_score}")
 

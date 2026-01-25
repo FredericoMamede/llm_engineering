@@ -2,12 +2,12 @@
 Data contracts for RAG evaluation system.
 
 This module defines all dataclasses used for evaluation.
-These are design sketches - not yet implemented.
+All dataclasses are frozen (immutable) to ensure reproducibility.
 """
 
-from dataclasses import dataclass, field
-from typing import List, Dict, Any, Optional, Set, Tuple
-from datetime import datetime
+from dataclasses import dataclass, field, asdict
+from typing import List, Dict, Any, Optional, Set
+import json
 
 
 # ============================================================================
@@ -40,6 +40,10 @@ class TestCase:
     
     # Optional context
     notes: Optional[str] = None  # Human notes about what makes this a good test case
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        return asdict(self)
 
 
 # ============================================================================
@@ -72,6 +76,10 @@ class AnswerEvaluation:
     
     # Optional: reference answer if one was generated (for context only, not comparison)
     reference_answer_text: Optional[str] = None
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        return asdict(self)
 
 
 # ============================================================================
@@ -112,6 +120,10 @@ class RetrievalMetrics:
     total_chunks_retrieved: int
     top_similarity_score: float  # Highest similarity score in retrieved chunks
     avg_similarity_score: float  # Average similarity score
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        return asdict(self)
 
 
 # ============================================================================
@@ -144,6 +156,20 @@ class AnswerMetrics:
     
     # Category breakdown (optional)
     metrics_by_category: Optional[Dict[str, 'AnswerMetrics']] = None  # Recursive for category analysis
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = asdict(self)
+        # Handle Set[str] -> List[str] conversion
+        if isinstance(result.get('total_unique_missed_concepts'), set):
+            result['total_unique_missed_concepts'] = list(result['total_unique_missed_concepts'])
+        # Handle recursive AnswerMetrics
+        if result.get('metrics_by_category'):
+            result['metrics_by_category'] = {
+                k: v.to_dict() if hasattr(v, 'to_dict') else asdict(v)
+                for k, v in result['metrics_by_category'].items()
+            }
+        return result
 
 
 # ============================================================================
@@ -176,7 +202,7 @@ class EvaluationRun:
     
     # Summary statistics
     total_test_cases: int
-    avg_mrr: float
+    avg_concept_mrr: float
     avg_ndcg_at_10: float
     avg_recall_at_10: float
     avg_concept_coverage: float
@@ -185,3 +211,17 @@ class EvaluationRun:
     # Metadata
     vector_db_version: Optional[str] = None  # If versioning is tracked
     notes: Optional[str] = None  # Human notes about this run
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = asdict(self)
+        # Convert nested dataclasses
+        result['test_cases'] = [tc.to_dict() if hasattr(tc, 'to_dict') else asdict(tc) for tc in self.test_cases]
+        result['retrieval_metrics'] = [rm.to_dict() if hasattr(rm, 'to_dict') else asdict(rm) for rm in self.retrieval_metrics]
+        result['answer_metrics'] = self.answer_metrics.to_dict() if hasattr(self.answer_metrics, 'to_dict') else asdict(self.answer_metrics)
+        return result
+    
+    def to_json(self, filepath: str) -> None:
+        """Serialize to JSON file."""
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(self.to_dict(), f, indent=2, ensure_ascii=False)

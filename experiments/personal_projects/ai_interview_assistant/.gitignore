@@ -46,6 +46,9 @@ data/weaknesses.json
 *.db
 *.sqlite
 
+# Evaluation runs
+evaluation/runs/
+
 # Logs
 *.log
 logs/
