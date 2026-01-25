@@ -29,16 +29,16 @@ class TestCase:
     
     # Concept-based expectations (what concepts should be retrieved/covered)
     expected_concepts: List[str]  # List of concept names that should appear in retrieved chunks
+    
+    # Metadata (required fields)
+    category: str  # e.g., "direct_fact", "system_design", "tradeoff_analysis"
+    difficulty: str  # "easy", "medium", "hard"
+    
+    # Optional fields (must come after required fields)
     expected_requirement_ids: Optional[List[str]] = None  # If question targets specific requirements
     expected_company_domains: Optional[List[str]] = None  # If question targets specific company domains
     expected_chunk_types: Optional[List[str]] = None  # Expected chunk types (primary, tradeoff, etc.)
-    
-    # Metadata
-    category: str  # e.g., "direct_fact", "system_design", "tradeoff_analysis"
-    difficulty: str  # "easy", "medium", "hard"
     tags: List[str] = field(default_factory=list)  # Additional tags for filtering
-    
-    # Optional context
     notes: Optional[str] = None  # Human notes about what makes this a good test case
     
     def to_dict(self) -> Dict[str, Any]:

@@ -350,6 +350,84 @@ The system emphasizes:
 - **Transparency**: Full visibility into retrieval and evaluation
 - **Privacy**: All data (sessions, weaknesses) stored locally
 
+## Running RAG Evaluations
+
+The RAG Evaluation system measures the quality of retrieval and answer generation. Evaluations are run **offline** (outside the UI) and generate artifacts that can be visualized in the RAG Evaluation Dashboard.
+
+### Why Offline?
+
+RAG evaluations are computationally expensive (multiple LLM calls per test case) and should be run intentionally, not automatically. This separation ensures:
+
+- **Explicit Control**: Evaluations run only when explicitly requested
+- **Reproducibility**: Each run is a complete, immutable snapshot
+- **Resource Management**: Avoids accidental API costs or performance impact
+- **Auditability**: Clear separation between evaluation execution and visualization
+
+### Workflow
+
+1. **Run Evaluation**: Execute the offline runner to generate an EvaluationRun artifact
+2. **Generate Artifact**: Results are saved to `evaluation/runs/run_YYYYMMDD_HHMMSS.json`
+3. **Inspect in UI**: Open the UI and navigate to the "RAG Evaluation" tab to view results
+
+### Running an Evaluation
+
+1. **Configure the runner** (optional):
+   - Edit `evaluation/run_evaluation.py`
+   - Modify configuration at the top of the file:
+     - `TEST_SET_NAME`: Which test set to evaluate ("core", "system_design", "tradeoff", "all")
+     - `RETRIEVAL_CONFIG`: Retrieval parameters (top_k, query rewriting)
+     - `ANSWER_CONFIG`: Answer generation model and settings
+     - `JUDGE_CONFIG`: Evaluation model and settings
+
+2. **Execute the runner**:
+   ```bash
+   python evaluation/run_evaluation.py
+   ```
+
+3. **Monitor progress**: The script prints progress to stdout, including:
+   - Test cases being evaluated
+   - Completion status
+   - Summary metrics when finished
+
+4. **View results**: After completion:
+   - Open the UI: `python ui/app.py`
+   - Navigate to the **"RAG Evaluation"** tab
+   - Select the run from the dropdown (runs are listed by timestamp)
+   - Click **"Load Run"** to view:
+     - Overall metrics (MRR, nDCG, Recall, Coverage, Confidence)
+     - Weakest requirements ranking
+     - Chunk type usage analysis
+     - Retrieval-answer mismatches
+     - Export analysis report
+
+### Understanding Evaluation Metrics
+
+- **Average Concept MRR**: Mean Reciprocal Rank - how highly ranked relevant chunks are
+- **Average nDCG@10**: Normalized Discounted Cumulative Gain at rank 10 - ranking quality
+- **Average Recall@10**: How many expected concepts are found in top-10 chunks
+- **Average Concept Coverage**: Percentage of expected concepts found in retrieved chunks
+- **Average Answer Confidence**: Average confidence score (1-5) from answer evaluation
+
+### Comparing Runs
+
+The RAG Evaluation Dashboard supports regression detection:
+
+1. Select a **baseline run** (earlier evaluation)
+2. Select a **current run** (later evaluation)
+3. Click **"Compare Runs"** to see:
+   - Metric changes (improvements, regressions, stable)
+   - Per-requirement changes
+   - Overall assessment
+
+This helps track system performance over time and identify regressions.
+
+### Notes
+
+- **Safe to run multiple times**: Each run generates a new artifact with a unique timestamp
+- **Deterministic**: Same configuration and data produce the same results
+- **No UI modification**: The UI is read-only and does not execute evaluations
+- **Artifact persistence**: All evaluation runs are saved as JSON files in `evaluation/runs/`
+
 ## Tips
 
 ### For Q&A Mode

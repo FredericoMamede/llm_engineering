@@ -5,7 +5,7 @@ This UI provides transparent access to the interview preparation system,
 emphasizing visibility over polish.
 """
 
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional, Tuple, List
 from pathlib import Path
 import gradio as gr
 
@@ -14,6 +14,14 @@ try:
     from evaluation.judge import AnswerJudge
     from core.interview_simulator import InterviewSimulator, Difficulty, Outcome, ExaminerPersonality
     from core.config_loader import ConfigLoader
+    from evaluation.analysis import (
+        load_evaluation_run,
+        rank_weakest_requirements,
+        analyze_chunk_type_usage,
+        find_retrieval_answer_mismatches,
+        compare_evaluation_runs,
+        generate_analysis_summary
+    )
     from .drill_mode import DrillModeManager
     from .weakness_tracker import WeaknessTracker
 except ImportError:
@@ -25,6 +33,14 @@ except ImportError:
     from evaluation.judge import AnswerJudge
     from core.interview_simulator import InterviewSimulator, Difficulty, Outcome, ExaminerPersonality
     from core.config_loader import ConfigLoader
+    from evaluation.analysis import (
+        load_evaluation_run,
+        rank_weakest_requirements,
+        analyze_chunk_type_usage,
+        find_retrieval_answer_mismatches,
+        compare_evaluation_runs,
+        generate_analysis_summary
+    )
     from ui.drill_mode import DrillModeManager
     from ui.weakness_tracker import WeaknessTracker
 
@@ -1031,6 +1047,313 @@ def create_interview_simulator_ui():
         )
 
 
+def get_available_evaluation_runs() -> List[Tuple[str, str]]:
+    """
+    Get list of available evaluation runs from evaluation/runs/ directory.
+    
+    Returns:
+        List of (display_name, filepath) tuples for dropdown
+    """
+    runs_dir = PROJECT_ROOT / "evaluation" / "runs"
+    runs_dir.mkdir(parents=True, exist_ok=True)
+    
+    runs = []
+    for json_file in sorted(runs_dir.glob("run_*.json"), reverse=True):
+        # Extract run_id from filename
+        run_id = json_file.stem
+        # Format display name: run_20250123_143022 -> 2025-01-23 14:30:22
+        try:
+            parts = run_id.split("_")
+            if len(parts) >= 3:
+                date_part = parts[1]
+                time_part = parts[2]
+                display = f"{date_part[:4]}-{date_part[4:6]}-{date_part[6:8]} {time_part[:2]}:{time_part[2:4]}:{time_part[4:6]}"
+            else:
+                display = run_id
+        except:
+            display = run_id
+        
+        runs.append((display, str(json_file)))
+    
+    return runs if runs else [("No runs available", "")]
+
+
+def load_and_analyze_run(run_filepath: str) -> Tuple[str, str, str, str, str]:
+    """
+    Load an evaluation run and generate all analysis displays.
+    
+    Returns:
+        Tuple of (metrics_summary, weakest_requirements, chunk_type_analysis, 
+                 mismatch_report, export_content)
+    """
+    if not run_filepath or run_filepath == "":
+        return (
+            "**No run selected.**",
+            "**No run selected.**",
+            "**No run selected.**",
+            "**No run selected.**",
+            ""
+        )
+    
+    try:
+        run = load_evaluation_run(Path(run_filepath))
+        
+        # Generate metrics summary
+        metrics_summary = f"""
+## Overall Metrics
+
+- **Average Concept MRR:** {run.avg_concept_mrr:.3f}
+- **Average nDCG@10:** {run.avg_ndcg_at_10:.3f}
+- **Average Recall@10:** {run.avg_recall_at_10:.3f}
+- **Average Concept Coverage:** {run.avg_concept_coverage:.3f}
+- **Average Answer Confidence:** {run.avg_confidence_score:.2f}/5
+
+**Run Info:**
+- Run ID: `{run.run_id}`
+- Timestamp: {run.timestamp}
+- Test Set: {run.test_set_name}
+- Total Test Cases: {run.total_test_cases}
+"""
+        
+        # Generate weakest requirements table
+        ranking = rank_weakest_requirements(run)
+        if ranking.weakest_requirements:
+            req_lines = [
+                "| Rank | Requirement ID | Tests | Coverage | MRR | Confidence | Weakness Score |",
+                "|------|----------------|-------|----------|-----|------------|----------------|"
+            ]
+            for i, weakness in enumerate(ranking.weakest_requirements[:10], 1):
+                req_lines.append(
+                    f"| {i} | `{weakness.requirement_id}` | {weakness.test_count} | "
+                    f"{weakness.avg_concept_coverage:.3f} | {weakness.avg_retrieval_mrr:.3f} | "
+                    f"{weakness.avg_answer_confidence:.2f} | {weakness.weakness_score:.3f} |"
+                )
+            weakest_requirements = "\n".join(req_lines)
+        else:
+            weakest_requirements = "**No requirements with sufficient test coverage.**"
+        
+        # Generate chunk type analysis
+        chunk_analysis = analyze_chunk_type_usage(run)
+        chunk_lines = [
+            "| Chunk Type | Expected | Actual | Ratio | Status |",
+            "|------------|----------|--------|-------|--------|"
+        ]
+        for usage in chunk_analysis.chunk_type_usages:
+            status = "⚠️ OVER-USED" if usage.over_used else ("⚠️ UNDER-USED" if usage.under_used else "✓ Balanced")
+            chunk_lines.append(
+                f"| `{usage.chunk_type}` | {usage.expected_count} | {usage.actual_count} | "
+                f"{usage.usage_ratio:.2f} | {status} |"
+            )
+        chunk_lines.append("")
+        chunk_lines.append("### Recommendations")
+        for rec in chunk_analysis.recommendations:
+            chunk_lines.append(f"- {rec}")
+        chunk_type_analysis = "\n".join(chunk_lines)
+        
+        # Generate mismatch report
+        mismatch_report_data = find_retrieval_answer_mismatches(run)
+        if mismatch_report_data.mismatches:
+            mismatch_lines = [
+                f"**Found {mismatch_report_data.mismatch_count} mismatches** (out of {mismatch_report_data.total_tests} tests)",
+                f"Average mismatch score: {mismatch_report_data.avg_mismatch_score:.3f}",
+                "",
+                "| Test ID | Question | Retrieval MRR | Coverage | Answer Confidence | Mismatch Score |",
+                "|---------|----------|---------------|----------|-------------------|----------------|"
+            ]
+            for mismatch in mismatch_report_data.mismatches[:10]:
+                question_short = mismatch.question[:60] + "..." if len(mismatch.question) > 60 else mismatch.question
+                mismatch_lines.append(
+                    f"| `{mismatch.test_id}` | {question_short} | {mismatch.retrieval_mrr:.3f} | "
+                    f"{mismatch.retrieval_concept_coverage:.3f} | {mismatch.answer_confidence_score}/5 | "
+                    f"{mismatch.mismatch_score:.3f} |"
+                )
+            mismatch_report = "\n".join(mismatch_lines)
+        else:
+            mismatch_report = "**No significant mismatches detected.**"
+        
+        # Generate export content (full analysis summary)
+        export_content = generate_analysis_summary(run)
+        
+        return (
+            metrics_summary,
+            weakest_requirements,
+            chunk_type_analysis,
+            mismatch_report,
+            export_content
+        )
+    except Exception as e:
+        error_msg = f"**Error loading run:** {str(e)}"
+        return (error_msg, error_msg, error_msg, error_msg, "")
+
+
+def compare_runs(baseline_filepath: str, current_filepath: str) -> str:
+    """
+    Compare two evaluation runs and return regression report.
+    
+    Returns:
+        Markdown-formatted comparison report
+    """
+    if not baseline_filepath or not current_filepath or baseline_filepath == "" or current_filepath == "":
+        return "**Please select both baseline and current runs.**"
+    
+    if baseline_filepath == current_filepath:
+        return "**Baseline and current runs must be different.**"
+    
+    try:
+        baseline_run = load_evaluation_run(Path(baseline_filepath))
+        current_run = load_evaluation_run(Path(current_filepath))
+        
+        regression = compare_evaluation_runs(baseline_run, current_run)
+        
+        lines = [
+            f"## Regression Analysis",
+            "",
+            f"**Baseline:** {regression.baseline_run_id}",
+            f"**Current:** {regression.current_run_id}",
+            "",
+            f"### {regression.overall_assessment}",
+            "",
+            f"- Regressions: {regression.regression_count}",
+            f"- Improvements: {regression.improvement_count}",
+            f"- Stable: {regression.stable_count}",
+            "",
+            "### Metric Changes",
+            "",
+            "| Metric | Baseline | Current | Change | % Change | Status |",
+            "|--------|----------|---------|--------|----------|--------|"
+        ]
+        
+        for metric in regression.metric_changes:
+            status = "📉 Regression" if metric.is_regression else ("📈 Improvement" if metric.is_improvement else "➡️ Stable")
+            lines.append(
+                f"| {metric.metric_name} | {metric.baseline_value:.3f} | {metric.current_value:.3f} | "
+                f"{metric.absolute_change:+.3f} | {metric.relative_change:+.1f}% | {status} |"
+            )
+        
+        if regression.requirement_changes:
+            lines.extend([
+                "",
+                "### Requirement Changes",
+                "",
+                "| Requirement ID | Baseline Weakness | Current Weakness | Change | % Change | Status |",
+                "|----------------|-------------------|------------------|--------|----------|--------|"
+            ])
+            
+            for req_id, change in list(regression.requirement_changes.items())[:10]:
+                status = "📉 Regression" if change.is_regression else ("📈 Improvement" if change.is_improvement else "➡️ Stable")
+                lines.append(
+                    f"| `{req_id}` | {change.baseline_value:.3f} | {change.current_value:.3f} | "
+                    f"{change.absolute_change:+.3f} | {change.relative_change:+.1f}% | {status} |"
+                )
+        
+        return "\n".join(lines)
+    except Exception as e:
+        return f"**Error comparing runs:** {str(e)}"
+
+
+def create_rag_evaluation_ui():
+    """Create the RAG Evaluation Dashboard UI tab."""
+    
+    with gr.Column():
+        gr.Markdown("""
+        ## RAG Evaluation Dashboard
+        
+        View and analyze completed evaluation runs. All data is read-only and comes from existing evaluation runs.
+        """)
+        
+        # Evaluation Run Selector
+        with gr.Accordion("Select Evaluation Run", open=True):
+            run_choices = get_available_evaluation_runs()
+            # Set default value only if we have valid choices
+            default_value = run_choices[0][1] if run_choices and run_choices[0][1] and run_choices[0][1] != "" else None
+            run_dropdown = gr.Dropdown(
+                choices=run_choices,
+                value=default_value,
+                label="Evaluation Run",
+                interactive=True,
+                info="Select an evaluation run to analyze"
+            )
+            load_run_btn = gr.Button("Load Run", variant="primary")
+        
+        # High-Level Metric Summary
+        with gr.Accordion("Overall Metrics", open=True):
+            metrics_display = gr.Markdown(
+                value="**Select and load an evaluation run to view metrics.**",
+                label="Metrics Summary"
+            )
+        
+        # Weakest Requirements
+        with gr.Accordion("Weakest Requirements", open=False):
+            weakest_requirements_display = gr.Markdown(
+                value="**No data loaded.**",
+                label="Requirement Weakness Ranking"
+            )
+        
+        # Chunk Type Usage Analysis
+        with gr.Accordion("Chunk Type Usage Analysis", open=False):
+            chunk_type_display = gr.Markdown(
+                value="**No data loaded.**",
+                label="Chunk Type Distribution"
+            )
+        
+        # Retrieval-Answer Mismatches
+        with gr.Accordion("Retrieval-Answer Mismatches", open=False):
+            mismatch_display = gr.Markdown(
+                value="**No data loaded.**",
+                label="Mismatch Analysis"
+            )
+        
+        # Regression Comparison
+        with gr.Accordion("Regression Comparison", open=False):
+            gr.Markdown("Compare two evaluation runs to detect regressions and improvements.")
+            
+            with gr.Row():
+                baseline_dropdown = gr.Dropdown(
+                    choices=run_choices,
+                    value=None,
+                    label="Baseline Run",
+                    interactive=True
+                )
+                current_dropdown = gr.Dropdown(
+                    choices=run_choices,
+                    value=None,
+                    label="Current Run",
+                    interactive=True
+                )
+            
+            compare_btn = gr.Button("Compare Runs", variant="secondary")
+            comparison_display = gr.Markdown(
+                value="**Select baseline and current runs, then click Compare Runs.**",
+                label="Comparison Results"
+            )
+        
+        # Export Analysis Report
+        with gr.Accordion("Export Analysis Report", open=False):
+            export_display = gr.Markdown(
+                value="**Load a run to generate export content.**",
+                label="Export Preview"
+            )
+        
+        # Wire up event handlers
+        load_run_btn.click(
+            fn=load_and_analyze_run,
+            inputs=[run_dropdown],
+            outputs=[
+                metrics_display,
+                weakest_requirements_display,
+                chunk_type_display,
+                mismatch_display,
+                export_display
+            ]
+        )
+        
+        compare_btn.click(
+            fn=compare_runs,
+            inputs=[baseline_dropdown, current_dropdown],
+            outputs=[comparison_display]
+        )
+
+
 def create_ui():
     """Create and return the Gradio interface."""
     
@@ -1208,6 +1531,10 @@ def create_ui():
             # Interview Simulator Tab
             with gr.Tab("Interview Simulator"):
                 create_interview_simulator_ui()
+            
+            # RAG Evaluation Tab
+            with gr.Tab("RAG Evaluation"):
+                create_rag_evaluation_ui()
     
     return app
 
