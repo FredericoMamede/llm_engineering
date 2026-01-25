@@ -1,8 +1,10 @@
 # Evaluation Analysis - Example Usage
 
-> **Purpose**
-> This document shows how to interpret and act on RAG evaluation results.
-> It does not define metrics or system behavior — see `RAG_EVALUATION.md` for design.
+> **Purpose**  
+> This document shows how to interpret and act on RAG evaluation results using the analysis layer.  
+> It does not define metrics or system behavior — see `RAG_EVALUATION_DESIGN.md` for design.
+
+**Status**: ✅ **Implemented** - All analysis functions are available in `evaluation/analysis.py`
 
 
 ## Basic Usage

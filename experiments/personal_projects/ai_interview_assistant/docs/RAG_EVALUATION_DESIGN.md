@@ -1,8 +1,10 @@
 # RAG Evaluation & Quality Layer - Design Document
 
-> **Status**: Design Phase (Not Implemented)  
+> **Status**: ✅ **Implemented**  
 > **Purpose**: Internal, offline evaluation harness for measuring RAG retrieval and answer quality  
-> **Constraint**: No ground truth answers, no UI, no auto-optimization, no coupling to Interview Simulator
+> **Constraint**: No ground truth answers, no UI execution, no auto-optimization, no coupling to Interview Simulator
+
+**Note**: This document describes the design and implementation of the RAG evaluation system. The system is fully implemented and functional. See `evaluation/run_evaluation.py` for the offline runner and the "RAG Evaluation" tab in the UI for visualization.
 
 ---
 

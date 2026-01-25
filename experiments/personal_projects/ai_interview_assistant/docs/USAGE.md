@@ -427,6 +427,9 @@ This helps track system performance over time and identify regressions.
 - **Deterministic**: Same configuration and data produce the same results
 - **No UI modification**: The UI is read-only and does not execute evaluations
 - **Artifact persistence**: All evaluation runs are saved as JSON files in `evaluation/runs/`
+- **Baseline metrics**: Metrics shown are baseline measurements, not optimized values
+- **Improvement tracking**: Improvements are driven by measured deltas between evaluation runs
+- **Offline by design**: Evaluations must be run explicitly via script - UI never executes evaluations
 
 ## Tips
 

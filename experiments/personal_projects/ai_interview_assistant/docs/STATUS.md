@@ -31,9 +31,18 @@
 - ✅ Rapid Fire Mode
 
 #### Evaluation System
-- ✅ LLM-as-a-judge evaluation (`evaluation/judge.py`)
+- ✅ LLM-as-a-judge evaluation (`evaluation/judge.py`) - Runtime answer evaluation
 - ✅ Structured feedback (strengths, gaps, missed concepts, follow-ups)
 - ✅ Confidence scoring (1-5 scale)
+
+#### RAG Evaluation System (Offline)
+- ✅ RAG evaluation orchestrator (`evaluation/rag_evaluator.py`)
+- ✅ Pure metric calculation (`evaluation/metrics.py`) - MRR, nDCG, Recall, coverage
+- ✅ Test case definitions (`evaluation/test_sets.py`) - Curated test sets
+- ✅ Data contracts (`evaluation/data_contracts.py`) - Immutable evaluation structures
+- ✅ Analysis layer (`evaluation/analysis.py`) - Weakest requirements, chunk types, mismatches, regression
+- ✅ Offline evaluation runner (`evaluation/run_evaluation.py`)
+- ✅ RAG Evaluation Dashboard (read-only UI tab)
 
 #### Interview Simulator
 - ✅ Interview Simulator (`core/interview_simulator.py`)
@@ -56,6 +65,7 @@
 - ✅ Gradio UI (`ui/app.py`) with multiple tabs
 - ✅ Q&A Mode tab (traditional question-answer interface)
 - ✅ Interview Simulator tab (system-driven questioning)
+- ✅ RAG Evaluation Dashboard tab (read-only visualization)
 - ✅ Mode selector
 - ✅ Retrieved context viewer
 - ✅ Answer and evaluation panels
@@ -145,9 +155,12 @@ The system is ready for use with:
 - Full RAG pipeline (ingestion → retrieval → generation)
 - 6 interview modes for Q&A
 - Interview Simulator for system-driven practice
-- Evaluation and teaching capabilities
+- Runtime answer evaluation and teaching capabilities
+- RAG Evaluation System (offline evaluation harness)
 - Drill Mode and Weakness Tracking
 - Complete documentation
+
+**RAG Evaluation**: The system includes a complete offline evaluation harness for measuring RAG quality. Evaluations are run explicitly via `evaluation/run_evaluation.py` and generate immutable artifacts. The UI provides read-only visualization of evaluation results. Metrics are baseline measurements used to track improvements through measured deltas between runs.
 
 **Extensibility**: The architecture supports multiple requirement sets and companies through configuration and metadata. UI-level selection for multiple sets is designed for extensibility but not yet implemented.
 

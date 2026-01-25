@@ -156,6 +156,7 @@ Implement prompt-orchestrated modes:
 
 ## 📊 Evaluation
 
+### Answer Evaluation (Runtime)
 - **LLM-as-a-judge** with structured scoring:
   - Accuracy
   - Depth
@@ -164,15 +165,39 @@ Implement prompt-orchestrated modes:
 - Identify missing concepts and weak framing
 - Suggest follow-up questions
 
+### RAG System Evaluation (Offline)
+- **Offline evaluation harness** for measuring RAG quality:
+  - Retrieval metrics (MRR, nDCG@K, Recall@K, concept coverage)
+  - Answer quality metrics (confidence scores, missed concepts)
+  - Weakest requirements analysis
+  - Chunk type usage diagnostics
+  - Retrieval-answer mismatch detection
+  - Regression detection between runs
+- **Evaluation runner**: `evaluation/run_evaluation.py` (offline execution)
+- **Evaluation Dashboard**: Read-only UI tab for visualizing results
+- **Analysis layer**: Pure analysis functions for diagnostic reports
+- Evaluations are **offline by design** - run explicitly, not automatically
+
 ---
 
-## 🖥️ UI Requirements
+## 🖥️ UI
 
-- **Gradio UI**
+- **Gradio UI** with three tabs:
+  - **Q&A Mode**: Traditional question-answer interface
+  - **Interview Simulator**: System-driven questioning
+  - **RAG Evaluation Dashboard**: Read-only visualization of evaluation runs
 - Mode selector
 - Retrieved context viewer
 - Answer + evaluation panel
 - Debug visibility into retrieval and re-ranking
+- **RAG Evaluation Dashboard** (read-only):
+  - Evaluation run selector
+  - Overall metrics summary
+  - Weakest requirements table
+  - Chunk type usage analysis
+  - Retrieval-answer mismatch table
+  - Regression comparison between runs
+  - Export analysis reports
 
 ---
 
@@ -216,7 +241,14 @@ ai_interview_assistant/
 │
 ├── evaluation/                 # Evaluation system
 │   ├── __init__.py
-│   └── judge.py                # LLM-as-a-judge evaluation
+│   ├── judge.py                # LLM-as-a-judge evaluation (runtime)
+│   ├── rag_evaluator.py        # RAG evaluation orchestrator (offline)
+│   ├── metrics.py              # Pure metric calculation functions
+│   ├── test_sets.py            # Curated test case definitions
+│   ├── data_contracts.py       # Evaluation data structures
+│   ├── analysis.py             # Analysis and diagnostic functions
+│   ├── run_evaluation.py       # Offline evaluation runner
+│   └── runs/                   # Evaluation run artifacts (JSON)
 │
 ├── ui/                         # Gradio interface
 │   ├── __init__.py
@@ -239,8 +271,11 @@ ai_interview_assistant/
 └── docs/                       # Documentation
     ├── ARCHITECTURE.md         # System architecture
     ├── STATUS.md               # Project status
+    ├── USAGE.md                # User guide and best practices
     ├── SOURCE_PLAN.md          # Source discovery plan
-    └── DISCOVERY_STATUS.md     # Discovery implementation status
+    ├── DISCOVERY_STATUS.md     # Discovery implementation status
+    ├── RAG_EVALUATION_DESIGN.md    # RAG evaluation system design
+    └── RAG_EVALUATION_ANALYSIS.md   # Evaluation analysis usage examples
 ```
 
 ---
@@ -278,6 +313,18 @@ python ui/app.py
 
 Access at: `http://localhost:7860`
 
+### 4. Run RAG Evaluation (Optional)
+
+```bash
+# Run offline evaluation to generate metrics
+python evaluation/run_evaluation.py
+
+# View results in UI: Navigate to "RAG Evaluation" tab
+# Select the run from dropdown and click "Load Run"
+```
+
+**Note**: Evaluations are offline by design. The UI only visualizes existing evaluation runs - it never executes evaluations.
+
 ---
 
 ## 📝 Current Status
@@ -292,8 +339,13 @@ Access at: `http://localhost:7860`
 - ✅ Strict answer generation with grounding
 - ✅ 6 interview modes (Explain, Interviewer, Evaluation, Company-Aware, System Design, Rapid Fire)
 - ✅ Interview Simulator (system-driven questioning with adaptive difficulty)
-- ✅ LLM-as-a-judge evaluation
-- ✅ Gradio UI with multiple tabs (Q&A Mode and Interview Simulator)
+- ✅ LLM-as-a-judge evaluation (runtime answer evaluation)
+- ✅ RAG Evaluation System (offline evaluation harness)
+  - Evaluation runner (`evaluation/run_evaluation.py`)
+  - Metrics calculation (MRR, nDCG, Recall, coverage)
+  - Analysis layer (weakest requirements, chunk types, mismatches, regression)
+  - RAG Evaluation Dashboard (read-only UI tab)
+- ✅ Gradio UI with multiple tabs (Q&A Mode, Interview Simulator, RAG Evaluation)
 - ✅ Drill mode for iterative practice
 - ✅ Weakness tracking with persistence
 
@@ -347,9 +399,11 @@ Access at: `http://localhost:7860`
 
 - **[ARCHITECTURE.md](docs/ARCHITECTURE.md)**: System architecture and design
 - **[STATUS.md](docs/STATUS.md)**: Current implementation status
-- **[USAGE.md](docs/USAGE.md)**: User guide and best practices
+- **[USAGE.md](docs/USAGE.md)**: User guide and best practices (includes RAG evaluation workflow)
 - **[SOURCE_PLAN.md](docs/SOURCE_PLAN.md)**: Source discovery plan
 - **[DISCOVERY_STATUS.md](docs/DISCOVERY_STATUS.md)**: Discovery implementation details
+- **[RAG_EVALUATION_DESIGN.md](docs/RAG_EVALUATION_DESIGN.md)**: RAG evaluation system design (implemented)
+- **[RAG_EVALUATION_ANALYSIS.md](docs/RAG_EVALUATION_ANALYSIS.md)**: Analysis usage examples
 
 ## 📚 References
 

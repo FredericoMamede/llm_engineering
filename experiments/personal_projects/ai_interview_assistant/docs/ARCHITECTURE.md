@@ -80,13 +80,39 @@ Query → Rewrite → Dual Retrieval → Merge & Deduplicate → Filter → Answ
 ### 4. Evaluation Layer
 
 **Components:**
-- `evaluation/judge.py`: LLM-as-a-judge evaluation
+- `evaluation/judge.py`: LLM-as-a-judge evaluation (runtime answer evaluation)
 
 **Key Features:**
 - Structured feedback (strengths, gaps, missed concepts, follow-ups)
 - Confidence scoring (1-5 scale)
 - Grounded evaluation (only uses retrieved chunks)
 - Robust parsing of LLM evaluation responses
+
+### 4.5. RAG Evaluation Layer (Offline)
+
+**Components:**
+- `evaluation/rag_evaluator.py`: Orchestration for offline RAG evaluation
+- `evaluation/metrics.py`: Pure metric calculation functions (MRR, nDCG, Recall, coverage)
+- `evaluation/test_sets.py`: Curated test case definitions
+- `evaluation/data_contracts.py`: Evaluation data structures
+- `evaluation/analysis.py`: Analysis and diagnostic functions
+- `evaluation/run_evaluation.py`: Offline evaluation runner script
+
+**Key Features:**
+- **Offline execution**: Evaluations run outside UI via `run_evaluation.py`
+- **Concept-based test cases**: Test questions with expected concepts (no ground truth answers)
+- **Retrieval metrics**: MRR, nDCG@K, Recall@K, concept coverage, chunk-type distribution
+- **Answer quality metrics**: Confidence scores, missed concepts (reuses AnswerJudge)
+- **Analysis functions**: Weakest requirements, chunk type usage, retrieval-answer mismatches
+- **Regression detection**: Compare two evaluation runs to detect improvements/regressions
+- **Immutable artifacts**: Each run saved as JSON snapshot in `evaluation/runs/`
+- **Read-only UI**: RAG Evaluation Dashboard visualizes existing runs, never executes evaluations
+
+**Architecture:**
+- Reuses existing components: `KnowledgeRetriever`, `AnswerGenerator`, `AnswerJudge`
+- No modifications to runtime components
+- Pure analysis functions (no LLM calls in analysis layer)
+- Complete separation: evaluation execution vs visualization
 
 ### 5. Interview Simulator Layer
 
@@ -142,6 +168,15 @@ Query → Rewrite → Dual Retrieval → Merge & Deduplicate → Filter → Answ
   - Teaching panel (on demand)
   - Progress tracking
   - Session controls
+- **RAG Evaluation Dashboard Tab**: Read-only visualization of evaluation runs
+  - Evaluation run selector (from `evaluation/runs/`)
+  - Overall metrics summary
+  - Weakest requirements table
+  - Chunk type usage diagnostics
+  - Retrieval-answer mismatch table
+  - Regression comparison between runs
+  - Export analysis reports
+  - **Important**: UI never executes evaluations - only displays existing artifacts
 - Confidence badges and visual indicators
 
 ## Data Flow
@@ -198,6 +233,32 @@ Query → Rewrite → Dual Retrieval → Merge & Deduplicate → Filter → Answ
    - Generate summary (statistics, weaknesses, recommendations)
    - Persist session to disk
 ```
+
+### RAG Evaluation Flow (Offline)
+
+```
+1. Run evaluation runner: python evaluation/run_evaluation.py
+2. Load test cases from test_sets.py
+3. For each test case:
+   a. Retrieve chunks (using KnowledgeRetriever)
+   b. Generate answer (using AnswerGenerator)
+   c. Evaluate answer (using AnswerJudge)
+   d. Calculate retrieval metrics (MRR, nDCG, Recall, coverage)
+   e. Calculate answer metrics (confidence, missed concepts)
+4. Aggregate results across all test cases
+5. Create EvaluationRun snapshot (immutable)
+6. Persist to evaluation/runs/run_YYYYMMDD_HHMMSS.json
+7. UI visualization (read-only):
+   - Load existing run from JSON
+   - Display metrics and analysis
+   - Compare runs for regression detection
+```
+
+**Key Points:**
+- Evaluations are **offline** - run explicitly via script, not from UI
+- UI is **read-only** - only visualizes existing artifacts
+- Metrics are **baseline** - not optimized, used to measure deltas
+- Improvements are driven by **measured deltas** between runs
 
 ## Extensibility Design
 
@@ -265,8 +326,15 @@ Local pickle-based storage (Chroma-compatible interface available):
 
 ## Monitoring and Observability
 
-- **Retrieval Metrics**: Track retrieval success rates
-- **Re-ranking Metrics**: Track re-ranking quality
-- **Answer Quality**: Track evaluation scores
-- **Source Freshness**: Monitor source age
-- **Coverage**: Track requirement coverage completeness
+- **Runtime Metrics**: 
+  - Retrieval success rates (via debug mode)
+  - Answer quality scores (confidence scores from AnswerJudge)
+  - Source freshness (metadata in chunks)
+  - Coverage (requirement coverage completeness)
+- **Offline RAG Evaluation**:
+  - Retrieval metrics (MRR, nDCG@K, Recall@K, concept coverage)
+  - Answer quality metrics (confidence scores, missed concepts)
+  - Weakest requirements analysis
+  - Chunk type usage diagnostics
+  - Regression detection between evaluation runs
+  - All metrics are baseline measurements - improvements tracked via deltas
