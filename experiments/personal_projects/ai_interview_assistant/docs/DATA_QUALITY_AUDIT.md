@@ -463,3 +463,110 @@ Phase 4.4 diagnosis confirms that **data quality and coverage gaps are the prima
 3. Iterate based on evaluation results
 
 **No code changes, retrieval modifications, or evaluation tuning are needed** - the problem is knowledge base quality, not system architecture.
+
+---
+
+## Phase 4.4 Iteration 2: Targeted Knowledge Ingestion (Executed)
+
+**Date**: 2026-01-25  
+**Status**: Source Files Created - Awaiting Chunking and Embedding
+
+### Execution Summary
+
+**New Sources Created**: 13 total
+- **req_10**: 5 new sources (Priority 1)
+- **req_8**: 4 new sources (Priority 2)
+- **req_9**: 4 new sources (Priority 3)
+
+### Sources Added by Requirement
+
+#### req_10 (Autonomous Work) - 5 New Sources
+
+1. **req_req_10_engineering_blog_task_prioritization.md**
+   - Content: Impact-urgency matrix, deadline management strategies, failure modes
+   - Chunk types: primary, tradeoff, failure_mode, interview_question
+   - Addresses: test_028 (task prioritization)
+
+2. **req_req_10_engineering_blog_remote_communication.md**
+   - Content: Technical progress updates, blocker reporting, async communication
+   - Chunk types: primary, failure_mode, interview_question
+   - Addresses: test_030 (remote communication, blocker reporting)
+
+3. **req_req_10_engineering_blog_burnout_prevention.md**
+   - Content: Sustainable pace strategies, resource constraint management, work-life balance
+   - Chunk types: primary, failure_mode, tradeoff
+   - Addresses: test_029 (burnout prevention, productivity)
+
+4. **req_req_10_engineering_blog_feature_breakdown.md**
+   - Content: Handling ambiguous requirements, feature decomposition, task breakdown
+   - Chunk types: primary, interview_question, failure_mode
+   - Addresses: test_039 (feature breakdown, task decomposition)
+
+5. **req_req_10_engineering_blog_time_estimation.md**
+   - Content: Estimation techniques, unfamiliar domains, realistic timeline communication
+   - Chunk types: primary, tradeoff, failure_mode, interview_question
+   - Addresses: test_040 (time estimation, timeline communication)
+
+#### req_8 (AI/LLM APIs) - 4 New Sources
+
+1. **req_req_8_engineering_blog_production_llm_integration.md**
+   - Content: Rate limiting, token usage management, cost optimization
+   - Chunk types: primary, failure_mode, tradeoff
+   - Addresses: test_023 (rate limiting, token usage, high-throughput)
+
+2. **req_req_8_engineering_blog_prompt_engineering_structured_outputs.md**
+   - Content: Structured output techniques, format constraints, consistency patterns
+   - Chunk types: primary, interview_question, failure_mode
+   - Addresses: test_021, test_036 (prompt engineering, structured outputs)
+
+3. **req_req_8_engineering_blog_llm_error_handling.md**
+   - Content: Error handling, fallback strategies, retry logic, graceful degradation
+   - Chunk types: primary, failure_mode, tradeoff
+   - Addresses: test_035 (error handling, fallback strategies)
+
+4. **req_req_8_engineering_blog_model_selection_tradeoffs.md**
+   - Content: GPT-4 vs GPT-4o-mini tradeoffs, cost analysis, latency comparison
+   - Chunk types: primary, tradeoff, interview_question
+   - Addresses: test_022 (model selection tradeoffs)
+
+#### req_9 (Product Thinking) - 4 New Sources
+
+1. **req_req_9_engineering_blog_build_vs_buy.md**
+   - Content: Build vs buy decision framework, TCO analysis, vendor lock-in
+   - Chunk types: primary, tradeoff, interview_question, failure_mode
+   - Addresses: test_025 (build vs buy decisions)
+
+2. **req_req_9_engineering_blog_technical_debt_vs_velocity.md**
+   - Content: Technical debt management, feature velocity tradeoffs, debt tracking
+   - Chunk types: primary, tradeoff, failure_mode
+   - Addresses: test_027 (technical debt vs velocity)
+
+3. **req_req_9_engineering_blog_product_aligned_decisions.md**
+   - Content: Product alignment questions, solution evaluation, refactoring vs features
+   - Chunk types: primary, interview_question, failure_mode
+   - Addresses: test_026, test_037, test_038 (product alignment, solution evaluation)
+
+4. **req_req_9_engineering_blog_product_thinking_failures.md**
+   - Content: Product thinking anti-patterns, failure modes, common mistakes
+   - Chunk types: primary, failure_mode, tradeoff
+   - Addresses: General product thinking failure modes
+
+### Next Steps
+
+**Pending Actions**:
+1. Run chunker to process new sources: `python -m ingest.chunker`
+2. Run embedder to create embeddings: `python -m ingest.embedder`
+3. Verify chunk counts meet targets:
+   - req_10: ≥15 chunks (currently 3, target +12 minimum)
+   - req_8: ≥15-20 chunks (currently 7, target +8 minimum)
+   - req_9: ≥15-20 chunks (currently 11, target +4 minimum)
+4. Verify failure_mode chunks exist for all three requirements
+5. Run evaluation to measure impact (Phase 4.4 Iteration 3)
+
+**Expected Outcomes**:
+- All missing test case concepts now have supporting chunks
+- Failure modes covered for all three requirements
+- Significant increase in chunk counts per requirement
+- Improved MRR and nDCG metrics in evaluation
+
+**Note**: Source files have been created with proper YAML frontmatter and structured content. Chunking and embedding must be executed to complete the ingestion process.
