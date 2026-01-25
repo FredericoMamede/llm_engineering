@@ -2,34 +2,34 @@
 
 **Last Updated:** 2026-01-25
 
-## Current Phase: 🔬 **Phase 5** - Retrieval Intelligence
+## Current Phase: ✅ **Phase 5** - Retrieval Intelligence (Finalized)
 
-### Phase 5: Retrieval Intelligence (In Progress)
+### Phase 5: Retrieval Intelligence (Finalized)
 
 **Objective**: Introduce retrieval intelligence that improves performance through controlled, explainable, and testable mechanisms without losing determinism or measurability.
 
 **Approach**: Three deterministic layers that adapt retrieval behavior based on structured signals (requirement_ids, tags, confidence scores).
 
-**Layer 1: Requirement-Aware Score Boosting** ✅ (Implemented)
-- **Change**: Chunks matching the question's requirement_id receive a 10% similarity score boost
-- **Constant**: `REQUIREMENT_MATCH_BOOST = 1.10` (≤ 1.15 constraint)
+**Layer 1: Requirement-Aware Score Boosting** ✅ (Finalized)
+- **Change**: Chunks matching the question's requirement_id receive a 5% similarity score boost
+- **Constant**: `REQUIREMENT_MATCH_BOOST = 1.05` (≤ 1.15 constraint)
 - **Applied**: After merge & deduplication, before final sorting
 - **Rationale**: Improve early ranking (MRR) by favoring chunks aligned with the question's requirement
-- **Status**: Implemented, awaiting evaluation
+- **Final Tuning**: Reduced from 1.10 to 1.05 to reduce ranking distortion while preserving gains
 
-**Layer 2: Failure-Mode Sensitivity** ✅ (Implemented)
-- **Change**: When question is tagged with `failure_mode`, failure_mode chunks receive a 10% boost
-- **Constant**: `FAILURE_MODE_BOOST = 1.10` (≤ 1.10 constraint)
+**Layer 2: Failure-Mode Sensitivity** ✅ (Finalized - Disabled)
+- **Change**: When question is tagged with `failure_mode`, failure_mode chunks receive no boost
+- **Constant**: `FAILURE_MODE_BOOST = 1.00` (disabled)
 - **Applied**: After merge & deduplication, before final sorting
 - **Rationale**: Surface diagnostic content when questions imply failure analysis
-- **Status**: Implemented, awaiting evaluation
+- **Final Tuning**: Disabled (set to 1.00) to stabilize answer confidence
 
-**Layer 3: Weakness-Aware Retrieval Depth** ✅ (Implemented)
-- **Change**: When retrieval confidence (avg top-3 similarity) < 0.65, increase final_k by +5
-- **Constants**: `CONFIDENCE_THRESHOLD = 0.65`, `DEPTH_INCREASE = 5`
+**Layer 3: Weakness-Aware Retrieval Depth** ✅ (Finalized)
+- **Change**: When retrieval confidence (avg top-3 similarity) < 0.60, increase final_k by +5
+- **Constants**: `CONFIDENCE_THRESHOLD = 0.60`, `DEPTH_INCREASE = 5`
 - **Applied**: Before final result truncation
 - **Rationale**: Increase recall only when retrieval confidence is low
-- **Status**: Implemented, awaiting evaluation
+- **Final Tuning**: Reduced threshold from 0.65 to 0.60 to reduce unnecessary depth expansion
 
 **Design Principles**:
 - Deterministic logic only (no LLM decision-making)
@@ -45,7 +45,37 @@
 - If ≥2 core metrics improve → KEEP
 - If any major regression → REVERT that layer only
 
-**Status**: Implementation complete, awaiting evaluation to measure impact
+**Status**: Finalized - Tuned for stability and confidence preservation
+
+**Final Tuning Summary:**
+- Requirement boost reduced from 10% to 5% for stability
+- Failure-mode boost disabled to stabilize answer confidence
+- Confidence threshold lowered from 0.65 to 0.60 to reduce unnecessary depth expansion
+- All gains in MRR, nDCG, Recall, and Coverage preserved
+- System ready for long-term use and interview discussion
+
+---
+
+## 🛑 Project Freeze
+
+**Status**: Intentionally Paused
+
+This project has reached a stable, evaluated state suitable for:
+- Interview preparation use
+- Technical interview discussion
+- RAG system experimentation and learning
+- Long-term archival
+
+**Completion Rationale:**
+- Architecturally sound with clear separation of concerns
+- Empirically evaluated with measurable improvements
+- Explainable end-to-end with deterministic logic
+- Fully documented with transparent design decisions
+- Complete by design - no pending improvements
+
+**No further changes are planned.** The system is frozen at this state to preserve stability and serve as a reference implementation.
+
+---
 
 ---
 

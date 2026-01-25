@@ -63,14 +63,14 @@ Query → Rewrite → Dual Retrieval → Merge & Deduplicate → Filter → Answ
 **Ranking Design Decision:**
 Retrieval ranking is intentionally simple and similarity-based. Phase 4.3 tested heuristic ranking approaches (dual-retrieval boosting, chunk-type penalties) but evaluation showed these did not meaningfully improve MRR or nDCG. The current implementation prioritizes transparency and evaluation-driven iteration over complex ranking heuristics.
 
-**Adaptive Retrieval (Deterministic) - Phase 5:**
-The system includes deterministic retrieval intelligence that adapts behavior based on structured signals without LLM decision-making:
+**Adaptive Retrieval (Deterministic) - Phase 5 (Final):**
+The system includes deterministic retrieval intelligence that adapts behavior based on structured signals without LLM decision-making. This is the **final adaptive retrieval layer** - tuned for stability and confidence preservation:
 
-- **Requirement-Aware Boosting**: Chunks matching the question's requirement_id receive a small score boost (1.10x) to improve early ranking for requirement-specific questions.
+- **Requirement-Aware Boosting**: Chunks matching the question's requirement_id receive a small score boost (1.05x) to improve early ranking for requirement-specific questions. Tuned to reduce ranking distortion while preserving gains.
 
-- **Failure-Mode Sensitivity**: When questions are tagged with `failure_mode`, failure_mode chunks receive a boost (1.10x) to surface diagnostic content.
+- **Failure-Mode Sensitivity**: Disabled (1.00x) to stabilize answer confidence. Failure-mode chunks are still retrieved but do not receive special boosting.
 
-- **Weakness-Aware Depth**: When retrieval confidence (average top-3 similarity) is low (< 0.65), the system increases retrieval depth by +5 chunks to improve recall.
+- **Weakness-Aware Depth**: When retrieval confidence (average top-3 similarity) is low (< 0.60), the system increases retrieval depth by +5 chunks to improve recall. Threshold tuned to reduce unnecessary depth expansion.
 
 **Why This Is Not Agentic:**
 - All adaptations use explicit constants (no learned parameters)

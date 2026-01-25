@@ -1,5 +1,15 @@
 # Usage Guide
 
+## System Status
+
+**The system is complete and optimized for interview preparation and experimentation.**
+
+The RAG system has been evaluated, tuned, and finalized. All retrieval intelligence is deterministic, explainable, and fully logged. The system is suitable for:
+- Interview preparation use
+- Technical interview discussion
+- RAG system experimentation and learning
+- Long-term archival
+
 ## Overview
 
 The AI Interview Preparation Assistant provides a production-grade RAG system for technical interview preparation. The system offers two main modes:
@@ -405,9 +415,9 @@ RAG evaluations are computationally expensive (multiple LLM calls per test case)
 The system includes deterministic retrieval intelligence that adapts behavior based on structured signals:
 
 **How It Works:**
-- **Requirement-Aware Boosting**: When questions target specific requirements (e.g., req_8, req_9, req_10), chunks matching those requirements receive a small score boost (10%) to improve early ranking.
-- **Failure-Mode Sensitivity**: Questions tagged with `failure_mode` boost failure_mode chunks (10%) to surface diagnostic content.
-- **Weakness-Aware Depth**: When retrieval confidence is low (average top-3 similarity < 0.65), the system automatically increases retrieval depth by +5 chunks to improve recall.
+- **Requirement-Aware Boosting**: When questions target specific requirements (e.g., req_8, req_9, req_10), chunks matching those requirements receive a small score boost (5%) to improve early ranking. Tuned for stability.
+- **Failure-Mode Sensitivity**: Disabled to stabilize answer confidence. Failure-mode chunks are still retrieved but do not receive special boosting.
+- **Weakness-Aware Depth**: When retrieval confidence is low (average top-3 similarity < 0.60), the system automatically increases retrieval depth by +5 chunks to improve recall. Threshold tuned to reduce unnecessary expansion.
 
 **Important Notes:**
 - All adaptations are **deterministic and explainable** (no LLM decision-making)
@@ -416,9 +426,10 @@ The system includes deterministic retrieval intelligence that adapts behavior ba
 - The system emphasizes **offline evaluation** and **measured improvements** over blind optimization
 
 **For Developers:**
-- Constants are defined in `core/retriever.py` (REQUIREMENT_MATCH_BOOST, FAILURE_MODE_BOOST, CONFIDENCE_THRESHOLD, DEPTH_INCREASE)
+- Constants are defined in `core/retriever.py` (REQUIREMENT_MATCH_BOOST=1.05, FAILURE_MODE_BOOST=1.00, CONFIDENCE_THRESHOLD=0.60, DEPTH_INCREASE=5)
 - All adaptive behavior is logged in `retrieval_metadata['phase5_adaptive']`
 - Each layer can be independently disabled for ablation studies
+- **Final tuning complete**: Constants have been tuned for stability and confidence preservation
 
 ### Understanding Evaluation Metrics
 

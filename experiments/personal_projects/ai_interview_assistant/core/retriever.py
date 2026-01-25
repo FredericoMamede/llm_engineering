@@ -28,24 +28,33 @@ QUERY_REWRITE_MODEL = "openai/gpt-4o-mini"
 wait = wait_exponential(multiplier=1, min=2, max=10)
 
 # ============================================================================
-# Phase 5: Retrieval Intelligence Constants
+# Phase 5: Retrieval Intelligence Constants (Final Tuned)
 # ============================================================================
 # These constants control deterministic, explainable retrieval adaptations.
 # All values are explicitly defined and can be adjusted for experimentation.
 # Changes are logged and reversible.
+#
+# Final tuning (Phase 5 freeze):
+# - Softer requirement boost reduces ranking distortion
+# - Failure-mode boost disabled to stabilize answer confidence
+# - Lower confidence threshold reduces unnecessary depth expansion
+# - All intelligence remains deterministic and explainable
 
 # Layer 1: Requirement-aware score boosting
-REQUIREMENT_MATCH_BOOST = 1.10  # Multiplicative boost for chunks matching question's requirement_id
+REQUIREMENT_MATCH_BOOST = 1.05  # Multiplicative boost for chunks matching question's requirement_id
 # Constraint: Must be ≤ 1.15
+# Final tuning: Reduced from 1.10 to 1.05 for stability
 
 # Layer 2: Failure-mode sensitivity
-FAILURE_MODE_BOOST = 1.10  # Multiplicative boost for failure_mode chunks when question is tagged
+FAILURE_MODE_BOOST = 1.00  # Multiplicative boost for failure_mode chunks when question is tagged
 # Constraint: Must be ≤ 1.10
+# Final tuning: Disabled (set to 1.00) to stabilize answer confidence
 
 # Layer 3: Weakness-aware retrieval depth
-CONFIDENCE_THRESHOLD = 0.65  # Average top-3 similarity threshold for low confidence
+CONFIDENCE_THRESHOLD = 0.60  # Average top-3 similarity threshold for low confidence
 DEPTH_INCREASE = 5  # Additional chunks to retrieve when confidence is low
 # Constraint: Must not regress recall or precision globally
+# Final tuning: Reduced from 0.65 to 0.60 to reduce unnecessary depth expansion
 
 
 @dataclass
