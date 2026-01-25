@@ -30,6 +30,7 @@ Source Discovery → Normalization → Semantic Chunking → Embedding → Vecto
 
 **Key Features:**
 - LLM-based semantic chunking with structured outputs (headline, summary, original_text)
+- **Content-hash-based chunk IDs** (Phase 4.5): Chunk IDs are derived from normalized chunk content and stable metadata (requirement_id, chunk_type, company_domain) using SHA256 hashing. This ensures any content change produces a new ID, enabling correct incremental ingestion without vector DB rebuilds.
 - Metadata preservation (source, freshness, requirement_id, chunk_type)
 - Source freshness validation (prefer < 24 months)
 - Browser fallback for bot-protected pages

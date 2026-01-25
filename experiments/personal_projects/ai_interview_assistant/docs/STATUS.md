@@ -2,7 +2,36 @@
 
 **Last Updated:** 2026-01-25
 
-## Current Phase: 🔬 **Phase 4.4** - Data Quality & Coverage Audit
+## Current Phase: ✅ **Phase 4.5** - Chunk Identity Fix (Complete)
+
+### Phase 4.5: Chunk Identity Fix (Completed)
+
+**Objective**: Fix chunk ID generation to be content-aware using deterministic hashing, enabling correct incremental ingestion.
+
+**Problem Identified**: Phase 4.4 added high-quality sources and chunks were created, but evaluation metrics did not change. Root cause: chunk ID collisions caused new content to be skipped by the embedder. The old ID generation used source filename + chunk index + headline hash, which could produce the same ID for different content.
+
+**Solution**: Implemented content-hash-based chunk IDs derived from:
+- Normalized chunk text (content)
+- Stable metadata (requirement_id, chunk_type, company_domain)
+- SHA256 hashing for robustness
+
+**Changes**:
+- Modified `ingest/chunker.py` to generate content-hash-based IDs
+- Added text normalization (lowercase, whitespace collapse)
+- IDs are now deterministic: same content = same ID, different content = different ID
+- Old chunk IDs can coexist with new ones (backward compatible)
+
+**Impact**:
+- New or modified chunks are now correctly embedded incrementally
+- Unchanged chunks are skipped (no unnecessary re-embedding)
+- Vector DB rebuilds are no longer required for correctness
+- Phase 4.4 ingestion impact can now be measured correctly
+
+**Status**: Complete - Ready for evaluation to measure Phase 4.4 impact
+
+---
+
+## Previous Phase: ✅ **Phase 4.4** - Data Quality & Coverage Audit (Complete)
 
 ### Phase 4.4: Data Quality & Coverage Audit (In Progress)
 

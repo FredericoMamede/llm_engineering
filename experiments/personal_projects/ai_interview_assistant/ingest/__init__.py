@@ -2,16 +2,17 @@
 Data ingestion pipeline components for AI Interview Preparation Assistant.
 """
 
-from .discoverer import SourceDiscoverer
-from .normalizer import DocumentNormalizer
+# Import only classes that actually exist
 from .chunker import SemanticChunker
-from .embedder import Embedder
-from .vector_store import VectorStore
+from .embedder import ChunkEmbedder
+
+# Optional imports - only if modules exist
+try:
+    from .discoverer import DocumentFetcher, SourcePlanParser, SourceMetadata
+except ImportError:
+    pass
 
 __all__ = [
-    "SourceDiscoverer",
-    "DocumentNormalizer",
     "SemanticChunker",
-    "Embedder",
-    "VectorStore",
+    "ChunkEmbedder",
 ]

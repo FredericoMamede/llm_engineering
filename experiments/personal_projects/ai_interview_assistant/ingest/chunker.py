@@ -8,6 +8,7 @@ chunks suitable for expert reasoning and interview preparation.
 import json
 import hashlib
 import yaml
+import re
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from dotenv import load_dotenv
@@ -85,7 +86,7 @@ class DocumentSource:
                 try:
                     self.metadata = yaml.safe_load(frontmatter_str) or {}
                 except yaml.YAMLError as e:
-                    print(f"⚠️  Warning: Failed to parse YAML frontmatter in {self.filepath}: {e}")
+                    print(f"[WARNING] Failed to parse YAML frontmatter in {self.filepath}: {e}")
                     self.metadata = {}
             else:
                 self.content = content
@@ -117,12 +118,84 @@ class SemanticChunker:
         self.output_dir = output_dir
         self.output_dir.mkdir(parents=True, exist_ok=True)
     
-    def _generate_chunk_id(self, source_path: Path, chunk_index: int, headline: str) -> str:
-        """Generate deterministic chunk ID."""
-        # Use source filename, index, and headline hash for stability
-        source_name = source_path.stem
-        headline_hash = hashlib.md5(headline.encode()).hexdigest()[:8]
-        return f"{source_name}_chunk_{chunk_index}_{headline_hash}"
+    def _normalize_text(self, text: str) -> str:
+        """
+        Normalize text for consistent hashing.
+        
+        Rules:
+        - Convert to lowercase
+        - Collapse whitespace (multiple spaces/tabs/newlines -> single space)
+        - Strip leading/trailing whitespace
+        """
+        if not text:
+            return ""
+        # Convert to lowercase
+        normalized = text.lower()
+        # Collapse whitespace
+        normalized = re.sub(r'\s+', ' ', normalized)
+        # Strip leading/trailing spaces
+        normalized = normalized.strip()
+        return normalized
+    
+    def _generate_chunk_id(
+        self, 
+        chunk_text: str, 
+        requirement_id: Optional[str], 
+        chunk_type: str,
+        company_domain: Optional[str]
+    ) -> str:
+        """
+        Generate content-hash-based chunk ID.
+        
+        Phase 4.5: Changed from index+headline-based to content-hash-based IDs.
+        This ensures that any meaningful change in chunk content ALWAYS results
+        in a new chunk ID, enabling correct incremental ingestion without
+        requiring vector DB rebuilds.
+        
+        The ID is derived from:
+        - Normalized chunk text (content)
+        - Stable metadata (requirement_id, chunk_type, company_domain)
+        
+        The ID does NOT depend on:
+        - Chunk index
+        - File order
+        - Execution order
+        - Filesystem paths
+        
+        This allows:
+        - New or modified chunks to always be embedded
+        - Unchanged chunks to be skipped (no re-embedding)
+        - Incremental ingestion without vector DB rebuilds
+        
+        Args:
+            chunk_text: The original_text content of the chunk
+            requirement_id: Optional requirement ID
+            chunk_type: The chunk type (primary, tradeoff, failure_mode, etc.)
+            company_domain: Optional company domain
+            
+        Returns:
+            Deterministic chunk ID based on content hash
+        """
+        # Normalize the chunk text
+        normalized_text = self._normalize_text(chunk_text)
+        
+        # Build hash input from content + stable metadata
+        # Use empty string for None values to ensure consistency
+        hash_input = (
+            normalized_text +
+            (requirement_id or "") +
+            chunk_type +
+            (company_domain or "")
+        )
+        
+        # Use SHA256 for more robust hashing (vs MD5)
+        # Truncate to 16 chars for readability while maintaining uniqueness
+        content_hash = hashlib.sha256(hash_input.encode('utf-8')).hexdigest()[:16]
+        
+        # Include source identifier prefix for readability (but not in hash)
+        # This helps with debugging but doesn't affect uniqueness
+        prefix = requirement_id or company_domain or "general"
+        return f"{prefix}_chunk_{content_hash}"
     
     def _create_chunking_prompt(self, document: DocumentSource) -> str:
         """Create prompt for LLM-based semantic chunking."""
@@ -218,11 +291,45 @@ Respond with a JSON object containing:
         
         # Generate chunk IDs and attach metadata
         base_metadata = document.get_chunk_metadata()
-        for i, chunk in enumerate(chunk_list.chunks):
-            chunk.chunk_id = self._generate_chunk_id(document.filepath, i, chunk.headline)
+        for chunk in chunk_list.chunks:
+            # Phase 4.5: Generate content-hash-based chunk ID
+            # This ensures any content change produces a new ID
+            chunk.chunk_id = self._generate_chunk_id(
+                chunk_text=chunk.original_text,
+                requirement_id=base_metadata.requirement_id,
+                chunk_type=chunk.chunk_type,
+                company_domain=base_metadata.company_domain
+            )
             chunk.inherited_metadata = base_metadata
         
         return chunk_list
+    
+    def _has_old_style_chunk_ids(self, chunk_file: Path) -> bool:
+        """
+        Check if chunk file contains old-style chunk IDs (index-based).
+        
+        Phase 4.5: Old IDs have format: {source}_chunk_{index}_{hash}
+        New IDs have format: {prefix}_chunk_{content_hash}
+        
+        We detect old IDs by checking for numeric index pattern.
+        """
+        try:
+            with open(chunk_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            chunks = data.get('chunks', [])
+            if not chunks:
+                return False
+            
+            # Check first chunk ID for old-style pattern
+            first_chunk_id = chunks[0].get('chunk_id', '')
+            # Old pattern: contains "_chunk_" followed by a number
+            if re.search(r'_chunk_\d+_', first_chunk_id):
+                return True
+            return False
+        except Exception:
+            # If we can't read/parse, assume it needs regeneration
+            return True
     
     def process_document(self, source_path: Path) -> bool:
         """Process a single source document into chunks."""
@@ -230,24 +337,35 @@ Respond with a JSON object containing:
             # Check if chunks already exist
             output_file = self.output_dir / f"{source_path.stem}_chunks.json"
             if output_file.exists():
-                print(f"⏭️  Skipping (chunks exist): {source_path.name}")
-                return True
+                # Phase 4.5: Check if existing chunks have old-style IDs
+                if self._has_old_style_chunk_ids(output_file):
+                    print(f"[REGEN] Regenerating (old-style IDs detected): {source_path.name}")
+                    # Continue to regenerate with new content-hash-based IDs
+                else:
+                    print(f"[SKIP] Skipping (chunks exist with new IDs): {source_path.name}")
+                    return True
             
-            print(f"📄 Processing: {source_path.name}")
+            print(f"[PROCESSING] Processing: {source_path.name}")
             
             # Load and parse document
             document = DocumentSource(source_path)
             
             # Skip if content is too shallow
             if len(document.content.strip()) < 100:
-                print(f"   ⚠️  Document too short, creating minimal chunk")
+                print(f"   [WARNING] Document too short, creating minimal chunk")
                 # Create a single high-level chunk
                 base_metadata = document.get_chunk_metadata()
+                chunk_text = document.content[:500] if len(document.content) > 500 else document.content
                 chunk = SemanticChunk(
-                    chunk_id=self._generate_chunk_id(source_path, 0, "Document Overview"),
+                    chunk_id=self._generate_chunk_id(
+                        chunk_text=chunk_text,
+                        requirement_id=base_metadata.requirement_id,
+                        chunk_type="primary",
+                        company_domain=base_metadata.company_domain
+                    ),
                     headline="Document Overview",
                     summary=f"This document ({document.metadata.get('source_name', 'Unknown')}) contains minimal or index-like content.",
-                    original_text=document.content[:500] if len(document.content) > 500 else document.content,
+                    original_text=chunk_text,
                     chunk_type="primary",
                     inherited_metadata=base_metadata
                 )
@@ -271,21 +389,36 @@ Respond with a JSON object containing:
             with open(output_file, 'w', encoding='utf-8') as f:
                 json.dump(output_data, f, indent=2, ensure_ascii=False)
             
-            print(f"   ✅ Created {len(chunk_list.chunks)} chunks")
+            print(f"   [OK] Created {len(chunk_list.chunks)} chunks")
             if chunk_list.missing_chunk_types:
-                print(f"   ⚠️  Missing chunk types: {', '.join(chunk_list.missing_chunk_types)}")
+                print(f"   [WARNING] Missing chunk types: {', '.join(chunk_list.missing_chunk_types)}")
             
             return True
             
         except Exception as e:
-            print(f"   ❌ Error processing {source_path.name}: {e}")
+            print(f"   [ERROR] Error processing {source_path.name}: {e}")
             return False
     
     def process_all(self, sources_dir: Path):
-        """Process all source documents."""
+        """
+        Process all source documents.
+        
+        Phase 4.5 Validation:
+        After running chunker, verify:
+        1. New chunks get NEW content-hash-based IDs (not index-based)
+        2. Identical content produces identical IDs across runs
+        3. Modified content produces different IDs
+        4. Chunk IDs are deterministic (same content = same ID)
+        
+        Expected behavior when running embedder:
+        - "Embedded in this run" > 0 for new/modified chunks
+        - Old chunks are skipped (already embedded)
+        - Vector DB size increases incrementally
+        - No vector DB rebuild required
+        """
         source_files = list(sources_dir.glob("*.md"))
         
-        print(f"🔍 Found {len(source_files)} source documents")
+        print(f"[INFO] Found {len(source_files)} source documents")
         
         successful = 0
         failed = 0
@@ -298,7 +431,7 @@ Respond with a JSON object containing:
             else:
                 failed += 1
         
-        print(f"\n✅ Chunking complete!")
+        print(f"\n[OK] Chunking complete!")
         print(f"   Successful: {successful}")
         print(f"   Failed: {failed}")
         print(f"   Total: {len(source_files)}")

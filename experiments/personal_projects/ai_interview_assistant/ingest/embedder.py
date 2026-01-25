@@ -49,10 +49,10 @@ class ChunkEmbedder:
                 self.vector_db_path.unlink()
             if self.metadata_path.exists():
                 self.metadata_path.unlink()
-            print("   ✅ Existing vector DB cleared")
+            print("   [OK] Existing vector DB cleared")
         
         # Initialize embeddings model
-        print(f"📥 Loading embedding model: {EMBEDDING_MODEL}")
+        print(f"[INFO] Loading embedding model: {EMBEDDING_MODEL}")
         self.embedding_model = SentenceTransformer(EMBEDDING_MODEL)
         
         # Load existing data if available
@@ -78,7 +78,7 @@ class ChunkEmbedder:
                     self.documents = metadata_data.get('documents', [])
                 print(f"   Loaded {len(self.embeddings)} existing embeddings")
             except Exception as e:
-                print(f"   ⚠️  Error loading existing DB: {e}, starting fresh")
+                print(f"   [WARNING] Error loading existing DB: {e}, starting fresh")
                 self.embeddings = []
                 self.metadatas = []
                 self.documents = []
@@ -194,7 +194,7 @@ class ChunkEmbedder:
             return embedded_count, skipped_count
             
         except Exception as e:
-            print(f"   ❌ Error processing {chunk_file.name}: {e}")
+            print(f"   [ERROR] Error processing {chunk_file.name}: {e}")
             return 0, 0
     
     def embed_all(self):
@@ -202,13 +202,13 @@ class ChunkEmbedder:
         chunk_files = list(self.chunks_dir.glob("*_chunks.json"))
         
         if not chunk_files:
-            print("⚠️  No chunk files found!")
+            print("[WARNING] No chunk files found!")
             return
         
-        print(f"🔍 Found {len(chunk_files)} chunk files")
+        print(f"[INFO] Found {len(chunk_files)} chunk files")
         
         # Get existing chunk IDs
-        print("📊 Checking existing embeddings...")
+        print("[INFO] Checking existing embeddings...")
         existing_chunk_ids = self._get_existing_chunk_ids()
         print(f"   Found {len(existing_chunk_ids)} already embedded chunks")
         
@@ -237,39 +237,39 @@ class ChunkEmbedder:
         # Final statistics
         total_in_db = len(self.embeddings)
         
-        print(f"\n✅ Embedding complete!")
+        print(f"\n[OK] Embedding complete!")
         print(f"   Embedded in this run: {total_embedded}")
         print(f"   Skipped (already embedded): {total_skipped}")
         print(f"   Total chunks in vector DB: {total_in_db}")
         
         # Per-requirement counts
         if requirement_counts:
-            print(f"\n📊 Chunks by requirement:")
+            print(f"\n[INFO] Chunks by requirement:")
             for req_id in sorted(requirement_counts.keys()):
                 print(f"   {req_id}: {requirement_counts[req_id]} chunks")
         
         # Per-domain counts
         if domain_counts:
-            print(f"\n📊 Chunks by company domain:")
+            print(f"\n[INFO] Chunks by company domain:")
             for domain in sorted(domain_counts.keys()):
                 print(f"   {domain}: {domain_counts[domain]} chunks")
         
         # Verify metadata filtering works
-        print(f"\n🔍 Testing metadata filtering...")
+        print(f"\n[INFO] Testing metadata filtering...")
         try:
             # Test requirement_id filter
             if requirement_counts:
                 test_req = list(requirement_counts.keys())[0]
                 filtered = [m for m in self.metadatas if m.get('requirement_id') == test_req]
                 if filtered:
-                    print(f"   ✅ Filter by requirement_id works ({len(filtered)} chunks found)")
+                    print(f"   [OK] Filter by requirement_id works ({len(filtered)} chunks found)")
             
             # Test chunk_type filter
             filtered = [m for m in self.metadatas if m.get('chunk_type') == 'primary']
             if filtered:
-                print(f"   ✅ Filter by chunk_type works ({len(filtered)} chunks found)")
+                print(f"   [OK] Filter by chunk_type works ({len(filtered)} chunks found)")
         except Exception as e:
-            print(f"   ⚠️  Metadata filtering test failed: {e}")
+            print(f"   [WARNING] Metadata filtering test failed: {e}")
 
 
 def main():
@@ -284,7 +284,7 @@ def main():
     force_rebuild = "--force-rebuild" in sys.argv or "-f" in sys.argv
     
     if force_rebuild:
-        print("⚠️  FORCE REBUILD MODE: Existing vector DB will be deleted!")
+        print("[WARNING] FORCE REBUILD MODE: Existing vector DB will be deleted!")
         response = input("Continue? (yes/no): ")
         if response.lower() != "yes":
             print("Aborted.")
@@ -293,7 +293,7 @@ def main():
     embedder = ChunkEmbedder(chunks_dir, vector_db_dir, force_rebuild=force_rebuild)
     embedder.embed_all()
     
-    print("\n✅ Vector database ready for retrieval!")
+    print("\n[OK] Vector database ready for retrieval!")
 
 
 if __name__ == "__main__":
