@@ -224,3 +224,7 @@ README_PRIVATE.md
 experiments/week_02/mini_projects/ai_knowledge_assistant/data/*.db
 experiments/week_02/mini_projects/ai_knowledge_assistant/data/*.sqlite
 experiments/week_02/mini_projects/ai_knowledge_assistant/data/*.sqlite3
+
+# Evaluation run artifacts
+experiments/evaluation/runs/
+experiments/week_06/evaluation/runs/

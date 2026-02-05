@@ -342,6 +342,33 @@ Extends code conversion to Rust, adds advanced benchmarking, and creates an enha
 
 ---
 
+## 📚 Week 6 — Regression Capstone
+
+### Week 6: "The Price Is Right" scaffold
+**Location:** `experiments/week_06/`
+
+**Status:** 🚧 **Scaffold complete; implementation in progress**
+
+**Description:**
+Week 6 regression capstone scaffold: predict product price from description (Amazon-style data). Independent from Week 5 (RAG); reuses evaluation-first patterns: single harness, baselines, metrics (MAE, MSE, R²), baseline comparison, failure-mode notes.
+
+**Key themes (from course):**
+- **Data curation** — Parse, scrub, Item schema, train/val/test (Day 1)
+- **LLM pre-processing** — Rewrite to standard format; batch API (Day 2)
+- **Evaluation + baselines** — Random, constant, linear, NLP+LR, Random Forest (Day 3)
+- **Deep learning** — PyTorch NN/DNN; frontier LLM zero-shot (Day 4)
+- **Fine-tuning** — OpenAI API: JSONL, job lifecycle, inference (Day 5)
+
+**Implemented in scaffold:**
+- Directory structure: data/, curation/, preprocess/, models/, evaluation/, experiments/, docs/
+- Evaluation metrics (MAE, MSE, R²) and harness (`evaluate(predictor, data, size)`)
+- Failure mode notes (fine-tuning can regress; human baseline)
+- Docs: ARCHITECTURE, STATUS, NOTES
+
+**Not in Week 6 (no graph/retrieval/ranking):** GraphRAG, hybrid retrieval, query expansion, reranking — those are not in the Week 6 course content.
+
+---
+
 ## 📊 Summary by Category
 
 ### Personal Projects (2)
@@ -356,10 +383,11 @@ Extends code conversion to Rust, adds advanced benchmarking, and creates an enha
 ### Challenges (1)
 1. **Week 3: Synthetic Data Generation System** - Multi-model data generation with Gradio UI
 
-### Week Experiments (3)
+### Week Experiments (4)
 1. **Week 4 Day 3: Python → C++ Conversion** - Code translation and benchmarking
 2. **Week 4 Day 4: Multi-Model UI** - Extended conversion with UI
 3. **Week 4 Day 5: Rust Conversion** - Advanced benchmarking and multi-language support
+4. **Week 6: Regression Capstone** - "The Price Is Right" scaffold (evaluation harness, baselines, fine-tuning)
 
 ---
 

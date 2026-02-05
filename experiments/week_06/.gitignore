@@ -1,0 +1,35 @@
+# Week 6 — Regression capstone
+
+# Environment
+.env
+.venv/
+venv/
+env/
+
+# Data (large or downloaded)
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+data/eval_sets/*
+!data/eval_sets/.gitkeep
+
+# Model artifacts
+*.pth
+*.pt
+*.pkl
+*.joblib
+
+# Fine-tuning
+jsonl/*.jsonl
+!jsonl/.gitkeep
+
+# Runs and outputs
+evaluation/runs/
+experiments/outputs/
+
+# IDE and OS
+.idea/
+.vscode/
+.DS_Store
+*.ipynb_checkpoints/
