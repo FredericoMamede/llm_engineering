@@ -1,0 +1,18 @@
+# Week 7 — Open-source QLoRA fine-tuning
+# Reuses Week 6 for curation and evaluation; add training and inference deps.
+
+# Week 6 base (curation, evaluation)
+pydantic>=2.0
+
+# Training and inference (QLoRA, PEFT, SFT)
+torch>=2.0
+transformers>=4.36
+accelerate>=0.25
+peft>=0.7
+bitsandbytes>=0.41
+trl>=0.7
+datasets>=2.14
+safetensors>=0.4
+
+# Optional: Hub upload
+huggingface_hub>=0.20

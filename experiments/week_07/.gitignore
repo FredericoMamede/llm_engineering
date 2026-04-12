@@ -1,0 +1,40 @@
+# Week 7 — Open-source fine-tuning capstone
+
+# Environment
+.env
+.venv/
+venv/
+env/
+
+# Data (large or downloaded)
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+data/prompts/*
+!data/prompts/.gitkeep
+data/eval_sets/*
+!data/eval_sets/.gitkeep
+
+# Model artifacts and checkpoints
+*.pth
+*.pt
+*.safetensors
+*.bin
+training/outputs/
+training/checkpoints/
+adapters/
+
+# Fine-tuning
+jsonl/*.jsonl
+!jsonl/.gitkeep
+
+# Runs and outputs
+evaluation/runs/
+experiments/outputs/
+
+# IDE and OS
+.idea/
+.vscode/
+.DS_Store
+*.ipynb_checkpoints/
